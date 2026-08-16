@@ -2,6 +2,16 @@
 
 Gerador de orçamentos sem login. Dados da empresa, clientes e orçamentos ficam salvos só no seu navegador (`localStorage`). Sem servidor, sem mensalidade.
 
+## Funcionalidades
+
+- Múltiplas empresas no mesmo navegador, cada uma com seus próprios clientes/orçamentos/serviços
+- Catálogo de serviços com preço padrão, reaproveitável ao montar orçamentos
+- Suporte a múltiplas moedas (padrão por empresa, ajustável por orçamento)
+- Gráfico de faturamento (orçado x aprovado) no Painel
+- Importar/exportar clientes em CSV
+- PDF via impressão do navegador (com logo e cor da empresa) e envio por WhatsApp
+- Página de Novidades com o histórico de atualizações
+
 ## Rodar localmente
 
 ```bash

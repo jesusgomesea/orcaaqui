@@ -1,4 +1,5 @@
 import { FileText, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,28 @@ import {
   todayStr, addDaysStr, formatDateBR, formatMoney,
   numeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, statusEfetivo,
 } from "@/lib/helpers";
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function faturamentoPorMes(orcamentos, meses = 6) {
+  const hoje = new Date();
+  const buckets = [];
+  for (let i = meses - 1; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const chave = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    buckets.push({ chave, label: `${MESES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, orcado: 0, aprovado: 0 });
+  }
+  const porChave = Object.fromEntries(buckets.map((b) => [b.chave, b]));
+  for (const o of orcamentos) {
+    const chave = o.data?.slice(0, 7);
+    const bucket = porChave[chave];
+    if (!bucket) continue;
+    const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
+    bucket.orcado += total;
+    if (statusEfetivo(o) === "aprovado") bucket.aprovado += total;
+  }
+  return buckets;
+}
 
 function Kpi({ icon: Icon, label, value, tone = "text-text" }) {
   return (
@@ -24,11 +47,12 @@ function Kpi({ icon: Icon, label, value, tone = "text-text" }) {
 }
 
 function PainelPage() {
-  const { state } = useStore();
+  const { empresaAtiva } = useStore();
+  const moeda = empresaAtiva.moeda || "BRL";
   const hoje = todayStr();
   const mesAtual = hoje.slice(0, 7);
 
-  const orcamentosComStatus = state.orcamentos.map((o) => ({ ...o, statusAtual: statusEfetivo(o) }));
+  const orcamentosComStatus = empresaAtiva.orcamentos.map((o) => ({ ...o, statusAtual: statusEfetivo(o) }));
 
   const orcadoNoMes = orcamentosComStatus
     .filter((o) => o.data?.slice(0, 7) === mesAtual)
@@ -46,16 +70,43 @@ function PainelPage() {
     .sort((a, b) => (a.validoAte < b.validoAte ? -1 : 1))
     .slice(0, 6);
 
+  const dadosGrafico = faturamentoPorMes(empresaAtiva.orcamentos);
+  const temDadosGrafico = dadosGrafico.some((b) => b.orcado > 0);
+
   return (
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Painel</h1>
 
       <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={TrendingUp} label="Orçado este mês" value={formatMoney(orcadoNoMes)} />
+        <Kpi icon={TrendingUp} label="Orçado este mês" value={formatMoney(orcadoNoMes, moeda)} />
         <Kpi icon={FileText} label="Orçamentos ativos" value={pendentes.length} />
         <Kpi icon={CheckCircle2} label="Taxa de aprovação" value={`${taxaAprovacao}%`} />
-        <Kpi icon={Clock} label="Total de orçamentos" value={state.orcamentos.length} />
+        <Kpi icon={Clock} label="Total de orçamentos" value={empresaAtiva.orcamentos.length} />
       </div>
+
+      <Card className="mb-5">
+        <h2 className="mb-3 text-[15px] font-bold text-text">Faturamento (últimos 6 meses)</h2>
+        {!temDadosGrafico ? (
+          <EmptyState message="Ainda não há orçamentos suficientes pra mostrar um gráfico." />
+        ) : (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosGrafico} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => formatMoney(v, moeda)} />
+                <Tooltip
+                  formatter={(v) => formatMoney(v, moeda)}
+                  contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12.5 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                <Bar dataKey="orcado" name="Orçado" fill="var(--primary-tint-strong)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="aprovado" name="Aprovado" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-[15px] font-bold text-text">Próximos a vencer</h2>
@@ -67,15 +118,15 @@ function PainelPage() {
               <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th></tr></Thead>
               <tbody>
                 {venceLogo.map((o) => {
-                  const index = state.orcamentos.findIndex((x) => x.id === o.id);
-                  const cliente = state.clientes.find((c) => c.id === o.clienteId);
+                  const index = empresaAtiva.orcamentos.findIndex((x) => x.id === o.id);
+                  const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
                   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
                   return (
                     <Tr key={o.id}>
-                      <Td className="font-semibold">{numeroOrcamento(state.orcamentos, index)}</Td>
+                      <Td className="font-semibold">{numeroOrcamento(empresaAtiva.orcamentos, index)}</Td>
                       <Td>{cliente?.nome || "-"}</Td>
                       <Td>{formatDateBR(o.validoAte)}</Td>
-                      <Td>{formatMoney(total)}</Td>
+                      <Td>{formatMoney(total, o.moeda || moeda)}</Td>
                       <Td><Badge tone={STATUS_TONE[o.statusAtual]}>{STATUS_LABEL[o.statusAtual]}</Badge></Td>
                     </Tr>
                   );

@@ -30,8 +30,19 @@ export function formatDateBR(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export function formatMoney(v) {
-  return (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const MOEDAS = [
+  { codigo: "BRL", label: "Real (R$)" },
+  { codigo: "USD", label: "Dólar (US$)" },
+  { codigo: "EUR", label: "Euro (€)" },
+  { codigo: "GBP", label: "Libra (£)" },
+  { codigo: "ARS", label: "Peso argentino" },
+  { codigo: "MXN", label: "Peso mexicano" },
+  { codigo: "CLP", label: "Peso chileno" },
+  { codigo: "PYG", label: "Guarani" },
+];
+
+export function formatMoney(v, moeda = "BRL") {
+  return (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: moeda });
 }
 
 export function numeroOrcamento(orcamentos, index) {
@@ -76,4 +87,51 @@ export function downloadFile(filename, content, mime = "application/json") {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+const CLIENTE_CSV_CAMPOS = ["nome", "documento", "telefone", "email", "endereco", "observacoes"];
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function clientesParaCsv(clientes) {
+  const linhas = [CLIENTE_CSV_CAMPOS.join(",")];
+  for (const c of clientes) linhas.push(CLIENTE_CSV_CAMPOS.map((campo) => csvEscape(c[campo])).join(","));
+  return linhas.join("\n");
+}
+
+// Parser simples: cobre aspas e vírgulas dentro de campos, não cobre CSVs com
+// quebras de linha dentro de um campo entre aspas (caso raro pra dados de cliente).
+function parseCsvLinha(linha) {
+  const campos = [];
+  let atual = "";
+  let dentroAspas = false;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (dentroAspas) {
+      if (c === '"' && linha[i + 1] === '"') { atual += '"'; i++; }
+      else if (c === '"') dentroAspas = false;
+      else atual += c;
+    } else if (c === '"') dentroAspas = true;
+    else if (c === ",") { campos.push(atual); atual = ""; }
+    else atual += c;
+  }
+  campos.push(atual);
+  return campos;
+}
+
+export function csvParaClientes(texto) {
+  const linhas = texto.split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (linhas.length < 2) return [];
+  const cabecalho = parseCsvLinha(linhas[0]).map((h) => h.trim().toLowerCase());
+  return linhas.slice(1).map((linha) => {
+    const valores = parseCsvLinha(linha);
+    const cliente = {};
+    cabecalho.forEach((campo, i) => {
+      if (CLIENTE_CSV_CAMPOS.includes(campo)) cliente[campo] = (valores[i] || "").trim();
+    });
+    return { nome: "", documento: "", telefone: "", email: "", endereco: "", observacoes: "", ...cliente };
+  }).filter((c) => c.nome);
 }

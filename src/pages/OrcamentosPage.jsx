@@ -11,27 +11,29 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import {
-  uuid, todayStr, addDaysStr, formatDateBR, formatMoney,
+  uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
   numeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, statusEfetivo,
 } from "@/lib/helpers";
 
-function novoOrcamentoPadrao(condicoesPadrao) {
+function novoOrcamentoPadrao(empresaAtiva) {
   return {
     clienteId: "",
     data: todayStr(),
     validadeDias: 15,
+    moeda: empresaAtiva.moeda || "BRL",
     itens: [{ id: uuid(), descricao: "", quantidade: 1, valorUnitario: 0 }],
     desconto: 0,
     descontoTipo: "valor",
     acrescimo: 0,
-    condicoes: condicoesPadrao || "",
+    condicoes: empresaAtiva.condicoesPadrao || "",
     observacoes: "",
     status: "rascunho",
   };
 }
 
-function OrcamentoForm({ orcamento, onSave, onCancel, onNovoCliente, clientes }) {
+function OrcamentoForm({ orcamento, onSave, onCancel, onNovoCliente, clientes, servicos }) {
   const [f, setF] = useState(orcamento);
+  const [pickerNonce, setPickerNonce] = useState({});
   const set = (patch) => setF((p) => ({ ...p, ...patch }));
 
   const setItem = (id, patch) => set({ itens: f.itens.map((it) => (it.id === id ? { ...it, ...patch } : it)) });
@@ -64,9 +66,18 @@ function OrcamentoForm({ orcamento, onSave, onCancel, onNovoCliente, clientes })
           </div>
           <Button type="button" variant="secondary" onClick={() => onNovoCliente((novo) => set({ clienteId: novo.id }))}>+ Novo</Button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div><Label>Data de emissão</Label><Input type="date" value={f.data} onChange={(e) => set({ data: e.target.value })} /></div>
           <div><Label>Validade (dias)</Label><Input type="number" min="1" value={f.validadeDias} onChange={(e) => set({ validadeDias: Number(e.target.value) || 1 })} /></div>
+          <div>
+            <Label>Moeda</Label>
+            <Select value={f.moeda} onValueChange={(v) => set({ moeda: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MOEDAS.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>Status</Label>
             <Select value={f.status} onValueChange={(v) => set({ status: v })}>
@@ -86,9 +97,30 @@ function OrcamentoForm({ orcamento, onSave, onCancel, onNovoCliente, clientes })
           {f.itens.map((it) => (
             <div key={it.id} className="rounded-lg border border-border p-2.5">
               <div className="flex items-start gap-2">
+                {servicos.length > 0 && (
+                  <div className="w-40 shrink-0">
+                    <Select
+                      key={pickerNonce[it.id] || 0}
+                      value={undefined}
+                      onValueChange={(v) => {
+                        const sv = servicos.find((s) => s.id === v);
+                        if (sv) {
+                          const descricao = sv.descricao ? `${sv.nome} — ${sv.descricao}` : sv.nome;
+                          setItem(it.id, { descricao, valorUnitario: sv.valor });
+                          setPickerNonce((p) => ({ ...p, [it.id]: (p[it.id] || 0) + 1 }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="truncate"><SelectValue placeholder="Serviço..." /></SelectTrigger>
+                      <SelectContent>
+                        {servicos.map((s) => <SelectItem key={s.id} value={s.id}>{s.categoria ? `${s.categoria} — ${s.nome}` : s.nome} ({formatMoney(s.valor, f.moeda)})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="w-16"><Input type="number" min="0" step="1" title="Quantidade" value={it.quantidade} onChange={(e) => setItem(it.id, { quantidade: Number(e.target.value) || 0 })} /></div>
                 <div className="w-28"><Input type="number" min="0" step="0.01" title="Valor unitário" value={it.valorUnitario} onChange={(e) => setItem(it.id, { valorUnitario: Number(e.target.value) || 0 })} /></div>
-                <div className="flex h-9 flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0))}</div>
+                <div className="flex h-9 flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), f.moeda)}</div>
                 <button type="button" onClick={() => removeItem(it.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger-tint hover:text-danger cursor-pointer">
                   <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                 </button>
@@ -113,19 +145,19 @@ function OrcamentoForm({ orcamento, onSave, onCancel, onNovoCliente, clientes })
             <Select value={f.descontoTipo} onValueChange={(v) => set({ descontoTipo: v })}>
               <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="valor">R$</SelectItem>
+                <SelectItem value="valor">Valor</SelectItem>
                 <SelectItem value="percentual">%</SelectItem>
               </SelectContent>
             </Select>
             <Input type="number" min="0" step="0.01" className="w-24" value={f.desconto} onChange={(e) => set({ desconto: Number(e.target.value) || 0 })} />
           </div>
           <div className="flex items-center gap-2">
-            <Label className="mb-0">Acréscimo (R$)</Label>
+            <Label className="mb-0">Acréscimo</Label>
             <Input type="number" min="0" step="0.01" className="w-24" value={f.acrescimo} onChange={(e) => set({ acrescimo: Number(e.target.value) || 0 })} />
           </div>
         </div>
-        <div className="mt-2 flex justify-end text-[13px] text-text-muted">Subtotal: {formatMoney(subtotal)}</div>
-        <div className="mt-1 flex justify-end text-[17px] font-bold text-text">Total: {formatMoney(total)}</div>
+        <div className="mt-2 flex justify-end text-[13px] text-text-muted">Subtotal: {formatMoney(subtotal, f.moeda)}</div>
+        <div className="mt-1 flex justify-end text-[17px] font-bold text-text">Total: {formatMoney(total, f.moeda)}</div>
       </fieldset>
 
       <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
@@ -146,12 +178,13 @@ function gerarOrcamentoHtml(o, cliente, numero, empresa) {
   const { subtotal, descontoValor, acrescimoValor, total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
   const validoAte = addDaysStr(o.data, o.validadeDias);
   const cor = empresa.corPrimaria || "#2563eb";
+  const moeda = o.moeda || empresa.moeda || "BRL";
   const linhas = o.itens.filter((it) => it.descricao.trim()).map((it) => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #eee;">${it.descricao}</td>
       <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:center;">${it.quantidade}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;">${formatMoney(it.valorUnitario)}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0))}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;">${formatMoney(it.valorUnitario, moeda)}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), moeda)}</td>
     </tr>`).join("");
 
   return `
@@ -198,12 +231,12 @@ function gerarOrcamentoHtml(o, cliente, numero, empresa) {
       <div style="display:flex;justify-content:flex-end;margin-top:14px;">
         <div style="width:260px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#667085;">
-            <span>Subtotal</span><span>${formatMoney(subtotal)}</span>
+            <span>Subtotal</span><span>${formatMoney(subtotal, moeda)}</span>
           </div>
-          ${descontoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#b54708;"><span>Desconto</span><span>-${formatMoney(descontoValor)}</span></div>` : ""}
-          ${acrescimoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#667085;"><span>Acréscimo</span><span>+${formatMoney(acrescimoValor)}</span></div>` : ""}
+          ${descontoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#b54708;"><span>Desconto</span><span>-${formatMoney(descontoValor, moeda)}</span></div>` : ""}
+          ${acrescimoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#667085;"><span>Acréscimo</span><span>+${formatMoney(acrescimoValor, moeda)}</span></div>` : ""}
           <div style="display:flex;justify-content:space-between;font-size:19px;font-weight:800;padding:10px 0 0;border-top:2px solid #1a2233;margin-top:6px;">
-            <span>Total</span><span>${formatMoney(total)}</span>
+            <span>Total</span><span>${formatMoney(total, moeda)}</span>
           </div>
         </div>
       </div>
@@ -223,33 +256,34 @@ function gerarOrcamentoHtml(o, cliente, numero, empresa) {
 }
 
 function gerarTextoWhatsapp(o, cliente, numero, empresa) {
+  const moeda = o.moeda || empresa.moeda || "BRL";
   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
   const validoAte = addDaysStr(o.data, o.validadeDias);
   const itens = o.itens.filter((it) => it.descricao.trim())
-    .map((it) => `• ${it.descricao} (${it.quantidade}x ${formatMoney(it.valorUnitario)})`).join("\n");
+    .map((it) => `• ${it.descricao} (${it.quantidade}x ${formatMoney(it.valorUnitario, moeda)})`).join("\n");
   return [
     `*Orçamento ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`,
     cliente ? `Cliente: ${cliente.nome}` : "",
     "",
     itens,
     "",
-    `*Total: ${formatMoney(total)}*`,
+    `*Total: ${formatMoney(total, moeda)}*`,
     `Válido até ${formatDateBR(validoAte)}`,
     o.condicoes ? `\n${o.condicoes}` : "",
   ].filter(Boolean).join("\n");
 }
 
 function OrcamentosPage() {
-  const { state, addOrcamento, updateOrcamento, removeOrcamento, addCliente } = useStore();
+  const { empresaAtiva, addOrcamento, updateOrcamento, removeOrcamento, addCliente } = useStore();
   const [modalOrcamento, setModalOrcamento] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCliente, setModalCliente] = useState(null);
 
-  const clienteNome = (id) => state.clientes.find((c) => c.id === id)?.nome || "(cliente removido)";
+  const clienteNome = (id) => empresaAtiva.clientes.find((c) => c.id === id)?.nome || "(cliente removido)";
 
-  const list = [...state.orcamentos].sort((a, b) => (a.data < b.data ? 1 : -1));
+  const list = [...empresaAtiva.orcamentos].sort((a, b) => (a.data < b.data ? 1 : -1));
 
-  const openNovo = () => { setModalOrcamento({ ...novoOrcamentoPadrao(state.empresa.condicoesPadrao), _isEdit: false }); setModalOpen(true); };
+  const openNovo = () => { setModalOrcamento({ ...novoOrcamentoPadrao(empresaAtiva), _isEdit: false }); setModalOpen(true); };
   const openEditar = (o) => { setModalOrcamento({ ...o, _isEdit: true }); setModalOpen(true); };
 
   const handleSave = (dados) => {
@@ -273,14 +307,14 @@ function OrcamentosPage() {
   };
 
   const handlePdf = (o, index) => {
-    const cliente = state.clientes.find((c) => c.id === o.clienteId);
-    document.getElementById("orcamento-print").innerHTML = gerarOrcamentoHtml(o, cliente, numeroOrcamento(state.orcamentos, index), state.empresa);
+    const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
+    document.getElementById("orcamento-print").innerHTML = gerarOrcamentoHtml(o, cliente, numeroOrcamento(empresaAtiva.orcamentos, index), empresaAtiva);
     window.print();
   };
 
   const handleWhatsapp = (o, index) => {
-    const cliente = state.clientes.find((c) => c.id === o.clienteId);
-    const texto = gerarTextoWhatsapp(o, cliente, numeroOrcamento(state.orcamentos, index), state.empresa);
+    const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
+    const texto = gerarTextoWhatsapp(o, cliente, numeroOrcamento(empresaAtiva.orcamentos, index), empresaAtiva);
     const numero = (cliente?.telefone || "").replace(/\D/g, "");
     const url = `https://wa.me/${numero ? (numero.length <= 11 ? "55" + numero : numero) : ""}?text=${encodeURIComponent(texto)}`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -301,17 +335,17 @@ function OrcamentosPage() {
               <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Emissão</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th><Th></Th></tr></Thead>
               <tbody>
                 {list.map((o) => {
-                  const index = state.orcamentos.findIndex((x) => x.id === o.id);
+                  const index = empresaAtiva.orcamentos.findIndex((x) => x.id === o.id);
                   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
                   const validoAte = addDaysStr(o.data, o.validadeDias);
                   const status = statusEfetivo(o);
                   return (
                     <Tr key={o.id}>
-                      <Td className="font-semibold">{numeroOrcamento(state.orcamentos, index)}</Td>
+                      <Td className="font-semibold">{numeroOrcamento(empresaAtiva.orcamentos, index)}</Td>
                       <Td>{clienteNome(o.clienteId)}</Td>
                       <Td>{formatDateBR(o.data)}</Td>
                       <Td>{formatDateBR(validoAte)}</Td>
-                      <Td>{formatMoney(total)}</Td>
+                      <Td>{formatMoney(total, o.moeda || empresaAtiva.moeda)}</Td>
                       <Td><Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge></Td>
                       <Td className="whitespace-nowrap">
                         <div className="flex flex-wrap justify-end gap-1.5">
@@ -342,7 +376,8 @@ function OrcamentosPage() {
           {modalOrcamento && (
             <OrcamentoForm
               orcamento={modalOrcamento}
-              clientes={state.clientes}
+              clientes={empresaAtiva.clientes}
+              servicos={empresaAtiva.servicos}
               onSave={handleSave}
               onCancel={() => setModalOpen(false)}
               onNovoCliente={(onSaved) => setModalCliente({ onSaved })}

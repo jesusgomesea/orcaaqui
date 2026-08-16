@@ -1,42 +1,66 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { uuid, todayStr } from "./helpers";
+import { NOVIDADES } from "./changelog";
 
 const STORAGE_KEY = "orcaaqui-dados-v1";
 
-export function defaultState() {
+function defaultEmpresa() {
   return {
-    empresa: {
-      nome: "",
-      documento: "",
-      telefone: "",
-      email: "",
-      site: "",
-      endereco: "",
-      logoDataUrl: "",
-      corPrimaria: "#2563eb",
-      dadosBancarios: "",
-      condicoesPadrao: "Sinal de 50% na confirmação, restante na entrega.",
-    },
+    id: uuid(),
+    nome: "",
+    documento: "",
+    telefone: "",
+    email: "",
+    site: "",
+    endereco: "",
+    logoDataUrl: "",
+    corPrimaria: "#2563eb",
+    moeda: "BRL",
+    dadosBancarios: "",
+    condicoesPadrao: "Sinal de 50% na confirmação, restante na entrega.",
     clientes: [],
     orcamentos: [],
+    servicos: [],
   };
 }
 
-function mergeState(base, parcial) {
+export function defaultState() {
+  const empresa = defaultEmpresa();
   return {
-    ...base,
-    ...parcial,
-    empresa: { ...base.empresa, ...(parcial.empresa || {}) },
-    clientes: parcial.clientes || [],
-    orcamentos: parcial.orcamentos || [],
+    empresaAtivaId: empresa.id,
+    empresas: [empresa],
+    novidadesVistoId: NOVIDADES[0]?.id || null,
   };
+}
+
+function mergeEmpresa(parcial) {
+  return { ...defaultEmpresa(), ...parcial, id: parcial.id || uuid() };
+}
+
+// Dados salvos antes do suporte a múltiplas empresas eram um único objeto
+// `{ empresa, clientes, orcamentos }` no topo do state. Migra pra dentro de
+// `empresas: [...]` na primeira carga pra não perder nada de quem já usava.
+function migrarSeNecessario(raw) {
+  if (raw.empresas) return raw;
+  if (!raw.empresa) return null;
+  const empresa = mergeEmpresa({
+    ...raw.empresa,
+    clientes: raw.clientes || [],
+    orcamentos: raw.orcamentos || [],
+    servicos: raw.servicos || [],
+  });
+  return { empresaAtivaId: empresa.id, empresas: [empresa] };
 }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    return mergeState(defaultState(), JSON.parse(raw));
+    const parsed = migrarSeNecessario(JSON.parse(raw));
+    if (!parsed || !parsed.empresas?.length) return defaultState();
+    const empresas = parsed.empresas.map(mergeEmpresa);
+    const empresaAtivaId = empresas.some((e) => e.id === parsed.empresaAtivaId) ? parsed.empresaAtivaId : empresas[0].id;
+    return { empresaAtivaId, empresas, novidadesVistoId: parsed.novidadesVistoId ?? null };
   } catch (e) {
     console.error("Falha ao carregar dados salvos, iniciando vazio.", e);
     return defaultState();
@@ -53,51 +77,120 @@ export function StoreProvider({ children }) {
   }, [state]);
 
   const importState = useCallback((novoEstado) => {
-    setState(mergeState(defaultState(), novoEstado));
+    const migrado = migrarSeNecessario(novoEstado) || novoEstado;
+    if (!migrado.empresas?.length) return;
+    const empresas = migrado.empresas.map(mergeEmpresa);
+    const empresaAtivaId = empresas.some((e) => e.id === migrado.empresaAtivaId) ? migrado.empresaAtivaId : empresas[0].id;
+    setState({ empresaAtivaId, empresas, novidadesVistoId: migrado.novidadesVistoId ?? null });
   }, []);
 
-  const updateEmpresa = useCallback((patch) => {
-    setState((s) => ({ ...s, empresa: { ...s.empresa, ...patch } }));
+  // Aplica `updater` só na empresa ativa dentro do array `empresas`.
+  const patchEmpresaAtiva = useCallback((updater) => {
+    setState((s) => ({
+      ...s,
+      empresas: s.empresas.map((e) => (e.id === s.empresaAtivaId ? updater(e) : e)),
+    }));
+  }, []);
+
+  const updateEmpresaAtiva = useCallback((patch) => {
+    patchEmpresaAtiva((e) => ({ ...e, ...patch }));
+  }, [patchEmpresaAtiva]);
+
+  const addEmpresa = useCallback((dados) => {
+    const nova = mergeEmpresa(dados || {});
+    setState((s) => ({ ...s, empresas: [...s.empresas, nova], empresaAtivaId: nova.id }));
+    return nova;
+  }, []);
+
+  const removeEmpresa = useCallback((id) => {
+    setState((s) => {
+      if (s.empresas.length <= 1) return s;
+      const empresas = s.empresas.filter((e) => e.id !== id);
+      const empresaAtivaId = s.empresaAtivaId === id ? empresas[0].id : s.empresaAtivaId;
+      return { ...s, empresas, empresaAtivaId };
+    });
+  }, []);
+
+  const switchEmpresa = useCallback((id) => {
+    setState((s) => (s.empresas.some((e) => e.id === id) ? { ...s, empresaAtivaId: id } : s));
   }, []);
 
   const addCliente = useCallback((cliente) => {
     const novo = { id: uuid(), nome: "", documento: "", telefone: "", email: "", endereco: "", observacoes: "", ...cliente };
-    setState((s) => ({ ...s, clientes: [...s.clientes, novo] }));
+    patchEmpresaAtiva((e) => ({ ...e, clientes: [...e.clientes, novo] }));
     return novo;
-  }, []);
+  }, [patchEmpresaAtiva]);
+  const addClientes = useCallback((clientes) => {
+    const novos = clientes.map((c) => ({ id: uuid(), nome: "", documento: "", telefone: "", email: "", endereco: "", observacoes: "", ...c }));
+    patchEmpresaAtiva((e) => ({ ...e, clientes: [...e.clientes, ...novos] }));
+    return novos;
+  }, [patchEmpresaAtiva]);
   const updateCliente = useCallback((id, patch) => {
-    setState((s) => ({ ...s, clientes: s.clientes.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
-  }, []);
+    patchEmpresaAtiva((e) => ({ ...e, clientes: e.clientes.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+  }, [patchEmpresaAtiva]);
   const removeCliente = useCallback((id) => {
-    setState((s) => ({ ...s, clientes: s.clientes.filter((c) => c.id !== id) }));
-  }, []);
+    patchEmpresaAtiva((e) => ({ ...e, clientes: e.clientes.filter((c) => c.id !== id) }));
+  }, [patchEmpresaAtiva]);
 
   const addOrcamento = useCallback((orcamento) => {
     const novo = { id: uuid(), criadoEm: todayStr(), ...orcamento };
-    setState((s) => ({ ...s, orcamentos: [...s.orcamentos, novo] }));
+    patchEmpresaAtiva((e) => ({ ...e, orcamentos: [...e.orcamentos, novo] }));
     return novo;
-  }, []);
+  }, [patchEmpresaAtiva]);
   const updateOrcamento = useCallback((id, patch) => {
-    setState((s) => ({ ...s, orcamentos: s.orcamentos.map((o) => (o.id === id ? { ...o, ...patch } : o)) }));
-  }, []);
+    patchEmpresaAtiva((e) => ({ ...e, orcamentos: e.orcamentos.map((o) => (o.id === id ? { ...o, ...patch } : o)) }));
+  }, [patchEmpresaAtiva]);
   const removeOrcamento = useCallback((id) => {
-    setState((s) => ({ ...s, orcamentos: s.orcamentos.filter((o) => o.id !== id) }));
+    patchEmpresaAtiva((e) => ({ ...e, orcamentos: e.orcamentos.filter((o) => o.id !== id) }));
+  }, [patchEmpresaAtiva]);
+
+  const addServico = useCallback((servico) => {
+    const novo = { id: uuid(), categoria: "", nome: "", descricao: "", valor: 0, ...servico };
+    patchEmpresaAtiva((e) => ({ ...e, servicos: [...e.servicos, novo] }));
+    return novo;
+  }, [patchEmpresaAtiva]);
+  const updateServico = useCallback((id, patch) => {
+    patchEmpresaAtiva((e) => ({ ...e, servicos: e.servicos.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)) }));
+  }, [patchEmpresaAtiva]);
+  const removeServico = useCallback((id) => {
+    patchEmpresaAtiva((e) => ({ ...e, servicos: e.servicos.filter((sv) => sv.id !== id) }));
+  }, [patchEmpresaAtiva]);
+
+  const marcarNovidadesVistas = useCallback(() => {
+    setState((s) => ({ ...s, novidadesVistoId: NOVIDADES[0]?.id || null }));
   }, []);
+
+  const empresaAtiva = state.empresas.find((e) => e.id === state.empresaAtivaId) || state.empresas[0];
 
   const value = useMemo(
     () => ({
       state,
+      empresaAtiva,
       setState,
       importState,
-      updateEmpresa,
+      updateEmpresaAtiva,
+      addEmpresa,
+      removeEmpresa,
+      switchEmpresa,
       addCliente,
+      addClientes,
       updateCliente,
       removeCliente,
       addOrcamento,
       updateOrcamento,
       removeOrcamento,
+      addServico,
+      updateServico,
+      removeServico,
+      marcarNovidadesVistas,
     }),
-    [state, importState, updateEmpresa, addCliente, updateCliente, removeCliente, addOrcamento, updateOrcamento, removeOrcamento]
+    [
+      state, empresaAtiva, importState, updateEmpresaAtiva, addEmpresa, removeEmpresa, switchEmpresa,
+      addCliente, addClientes, updateCliente, removeCliente,
+      addOrcamento, updateOrcamento, removeOrcamento,
+      addServico, updateServico, removeServico,
+      marcarNovidadesVistas,
+    ]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

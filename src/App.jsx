@@ -5,13 +5,17 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import PainelPage from "@/pages/PainelPage";
 import OrcamentosPage from "@/pages/OrcamentosPage";
 import ClientesPage from "@/pages/ClientesPage";
+import ServicosPage from "@/pages/ServicosPage";
 import ConfigPage from "@/pages/ConfigPage";
+import NovidadesPage from "@/pages/NovidadesPage";
 
 const PAGES = {
   painel: PainelPage,
   orcamentos: OrcamentosPage,
   clientes: ClientesPage,
+  servicos: ServicosPage,
   config: ConfigPage,
+  novidades: NovidadesPage,
 };
 
 function Shell() {
