@@ -1,8 +1,8 @@
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = ".next"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Runtime oficial do Next para Netlify: transforma as rotas de servidor em
+# Netlify Functions v2, que é o formato exigido pelo Netlify Identity.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
