@@ -48,6 +48,7 @@ function defaultEmpresa(): Empresa {
     clientes: [],
     orcamentos: [],
     servicos: [],
+    proximoNumero: 1,
   };
 }
 
@@ -60,8 +61,27 @@ export function defaultState(): EstadoApp {
   };
 }
 
+/**
+ * Dados gravados antes de `Orcamento.numero` existir não têm número nenhum: o
+ * ORC-XXXX saía da posição no array na hora de exibir. A numeração pela ordem
+ * atual preserva exatamente o que essas pessoas já viam, e `proximoNumero`
+ * continua dali — sem isso, todo mundo veria os números mudarem de uma vez.
+ */
+function numerarOrcamentosLegados(empresa: Empresa): Empresa {
+  const semNumero = empresa.orcamentos.some((o) => typeof o.numero !== "number");
+  if (!semNumero && typeof empresa.proximoNumero === "number") return empresa;
+
+  let proximo = 0;
+  const orcamentos = empresa.orcamentos.map((o, i) => {
+    const numero = typeof o.numero === "number" ? o.numero : i + 1;
+    if (numero > proximo) proximo = numero;
+    return { ...o, numero };
+  });
+  return { ...empresa, orcamentos, proximoNumero: Math.max(empresa.proximoNumero || 0, proximo + 1) };
+}
+
 function mergeEmpresa(parcial: Partial<Empresa>): Empresa {
-  return { ...defaultEmpresa(), ...parcial, id: parcial.id || uuid() };
+  return numerarOrcamentosLegados({ ...defaultEmpresa(), ...parcial, id: parcial.id || uuid() });
 }
 
 // Dados salvos antes do suporte a múltiplas empresas eram um único objeto
@@ -136,7 +156,7 @@ interface StoreValue {
   addClientes: (clientes: Partial<Cliente>[]) => Cliente[];
   updateCliente: (id: string, patch: Partial<Cliente>) => void;
   removeCliente: (id: string) => void;
-  addOrcamento: (orcamento: Partial<Orcamento>) => Orcamento;
+  addOrcamento: (orcamento: Partial<Orcamento>) => void;
   updateOrcamento: (id: string, patch: Partial<Orcamento>) => void;
   removeOrcamento: (id: string) => void;
   addServico: (servico: Partial<Servico>) => Servico;
@@ -318,9 +338,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addOrcamento = useCallback(
     (orcamento: Partial<Orcamento>) => {
-      const novo = { id: uuid(), criadoEm: todayStr(), ...orcamento } as Orcamento;
-      patchEmpresaAtiva((e) => ({ ...e, orcamentos: [...e.orcamentos, novo] }));
-      return novo;
+      // O número sai do contador da empresa, então precisa ser resolvido aqui
+      // dentro. `numero` vem depois do spread de propósito: duplicar um
+      // orçamento traz o número do original, e o novo tem que ganhar o seu.
+      patchEmpresaAtiva((e) => {
+        const numero = e.proximoNumero;
+        const novo = { id: uuid(), criadoEm: todayStr(), ...orcamento, numero } as Orcamento;
+        return { ...e, orcamentos: [...e.orcamentos, novo], proximoNumero: numero + 1 };
+      });
     },
     [patchEmpresaAtiva]
   );

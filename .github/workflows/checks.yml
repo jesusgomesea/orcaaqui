@@ -1,0 +1,31 @@
+# Roda os mesmos checks que o CLAUDE.md pede antes de dar por pronto, e mais um
+# `npm ci` limpo — a Netlify instala sem flags, e um conflito de peer dependency
+# derruba o deploy deixando o site num build antigo sem ninguém notar.
+name: Checks
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` de propósito, não `npm install`: falha se o package-lock.json
+      # estiver fora de sincronia com o package.json, que é o cenário que quebra
+      # o build da Netlify.
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm run build

@@ -55,9 +55,35 @@ export function formatMoney(v: number | string | undefined, moeda: CodigoMoeda =
   return (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: moeda });
 }
 
-export function numeroOrcamento(orcamentos: Orcamento[], index?: number | null): string {
-  const n = (index != null ? index : orcamentos.length) + 1;
-  return "ORC-" + String(n).padStart(4, "0");
+export function formatarNumeroOrcamento(numero: number): string {
+  return "ORC-" + String(numero).padStart(4, "0");
+}
+
+/**
+ * Escapa texto que vai para dentro de HTML montado à mão — hoje o documento
+ * impresso (`gerarOrcamentoHtml`). Sem isso, um "Instalação <2m" some do PDF, e
+ * um nome de cliente vindo de CSV de terceiro (`<img src=x onerror=...>`) roda
+ * script na sessão de quem importou, com acesso à /api/dados.
+ */
+export function escapeHtml(valor: unknown): string {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * A logo entra como `data:` URL vinda do arquivo escolhido pelo usuário, mas o
+ * backup importado é um JSON qualquer — e esse valor vai para um `src`. Só
+ * imagem passa: `data:text/html` ou `javascript:` aqui seria injeção.
+ */
+export function logoSegura(dataUrl: string | undefined | null): string {
+  const v = String(dataUrl ?? "").trim();
+  // Qualquer subtipo de imagem passa (não vale sumir com a logo de quem usa um
+  // formato menos comum); o que se barra é `data:text/html`, `javascript:` e cia.
+  return /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(v) ? v : "";
 }
 
 export function calcOrcamentoTotais(

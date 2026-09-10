@@ -70,6 +70,8 @@ Cada empresa é totalmente isolada (clientes/orçamentos/serviços próprios) �
 
 Status **expirado** não é gravado — é calculado na hora (`statusEfetivo` em [lib/helpers.ts](lib/helpers.ts)) comparando a validade com a data de hoje.
 
+**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em `store.tsx` numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
+
 A logo é salva como `data:` URL (base64) direto no state; o upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) rejeita arquivos acima de 1.5MB, e a rota recusa corpo acima de 8MB.
 
 Backup/portabilidade: exportar/importar o JSON inteiro do state (botões em Empresa) — inclui todas as empresas. Serve pra guardar cópia fora do serviço ou levar tudo pra outra conta. Importar **substitui** os dados da conta, por isso pede confirmação.
@@ -82,7 +84,7 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 
 **A raiz `/` é pública** ([app/page.tsx](app/page.tsx)) — a landing, fora do route group. O app autenticado começa em `/painel`. Por isso todo destino pós-autenticação aponta para `/painel`, nunca para `/`: `/entrar`, `/nova-senha`, o `handleAuthCallback()` do [ProvedorSessao](components/auth/ProvedorSessao.tsx) e o item "Painel" do [Sidebar](components/layout/Sidebar.tsx). O "Sair" é a exceção — leva de volta para a landing. Quem chega sem sessão numa rota do `(app)` continua caindo em `/entrar` (já queria o app, não a vitrine).
 
-- **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. Lê `useSessao()` só pra trocar o CTA por "Ir para o painel" quem já está logado; não usa o `StoreProvider`
+- **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. A página é Server Component só pra poder exportar `metadata` (título/OG, já que o link circula em WhatsApp e redes); o conteúdo é a ilha cliente [components/landing/Landing.tsx](components/landing/Landing.tsx), que lê `useSessao()` apenas pra trocar o CTA por "Ir para o painel" de quem já está logado. Não usa o `StoreProvider`
 - **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
@@ -99,6 +101,8 @@ O React só espelha esse estado, via `useSyncExternalStore` em [lib/useTema.ts](
 ## Geração de PDF
 Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` dentro de `app/(app)/orcamentos/page.tsx`, porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
 
+**Todo valor de dado interpolado ali passa por `escapeHtml()`, e a logo por `logoSegura()`** (ambos em [helpers.ts](lib/helpers.ts)). Isso vira `innerHTML`: sem escape, uma descrição com `<` some do PDF e um nome de cliente vindo de CSV de terceiro (`<img src=x onerror=...>`) roda script na sessão de quem importou, com acesso à `/api/dados`. Campo novo no documento impresso entra escapado.
+
 ## Diálogos (Radix)
 Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components/ui/dialog.tsx) **não têm animação de abrir/fechar de propósito**. Já existiu animação via CSS (`data-state` + `@keyframes`), mas com diálogos aninhados (ex: "+ Novo cliente" dentro do formulário de orçamento) a Presence do Radix não desmontava de forma confiável em StrictMode, deixando o overlay preto travado cobrindo a tela (parecia a página ter travado/ficado em branco). Não reintroduzir animação de fechamento sem testar bem o caso de diálogo aninhado.
 
@@ -108,6 +112,9 @@ Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components
 **O Netlify roda `npm install` puro.** Um conflito de peer dependency derruba o deploy mesmo com o `package-lock.json` commitado; resolver localmente com `--legacy-peer-deps` só esconde o problema e o site fica num build antigo sem ninguém notar. Se `npm install` não passa limpo, não vai ao ar.
 
 No painel, é preciso ter **Identity habilitado** e decidir `Registration preferences` (`Open` / `Invite only`) e o `autoconfirm`. Os modelos de e-mail chegam em inglês por padrão — traduzir. Para conferir o estado sem abrir o painel: `https://SEU-SITE.netlify.app/.netlify/identity/settings` (404 = Identity desligado).
+
+## CI
+[.github/workflows/checks.yml](.github/workflows/checks.yml) roda `npm ci`, `typecheck`, `lint` e `build` em todo push e PR. O `npm ci` é de propósito: falha quando o `package-lock.json` está fora de sincronia com o `package.json` — exatamente o que derruba o build da Netlify e deixa o site num build antigo sem aviso. Preferir abrir PR e esperar o verde a empurrar direto em `main`, já que push em `main` publica em produção.
 
 ## Convenções
 - Nomes de campos/variáveis em português, comentários em português quando necessário

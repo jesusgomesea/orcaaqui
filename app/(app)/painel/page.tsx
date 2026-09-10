@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import {
   todayStr, addDaysStr, formatDateBR, formatMoney,
-  numeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, statusEfetivo,
+  formatarNumeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, statusEfetivo,
 } from "@/lib/helpers";
 import type { CodigoMoeda, Orcamento } from "@/lib/tipos";
 
@@ -121,12 +121,11 @@ export default function PainelPage() {
               <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th></tr></Thead>
               <tbody>
                 {venceLogo.map((o) => {
-                  const index = empresaAtiva.orcamentos.findIndex((x) => x.id === o.id);
                   const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
                   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
                   return (
                     <Tr key={o.id}>
-                      <Td className="font-semibold">{numeroOrcamento(empresaAtiva.orcamentos, index)}</Td>
+                      <Td className="font-semibold">{formatarNumeroOrcamento(o.numero)}</Td>
                       <Td>{cliente?.nome || "-"}</Td>
                       <Td>{formatDateBR(o.validoAte)}</Td>
                       <Td>{formatMoney(total, o.moeda || moeda)}</Td>

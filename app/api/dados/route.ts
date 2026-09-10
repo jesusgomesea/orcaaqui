@@ -20,14 +20,20 @@ export async function PUT(request: Request) {
   const usuario = await getUser();
   if (!usuario) return Response.json(NAO_AUTENTICADO, { status: 401 });
 
-  const tamanho = Number(request.headers.get("content-length") || 0);
-  if (tamanho > LIMITE_BYTES) {
+  // O header é uma triagem barata, mas quem envia é que o preenche (e pode
+  // omitir). O limite que vale é o do corpo já lido.
+  const declarado = Number(request.headers.get("content-length") || 0);
+  if (declarado > LIMITE_BYTES) {
     return Response.json({ erro: "Dados grandes demais para salvar." }, { status: 413 });
   }
 
   let corpo: unknown;
   try {
-    corpo = await request.json();
+    const texto = await request.text();
+    if (texto.length > LIMITE_BYTES) {
+      return Response.json({ erro: "Dados grandes demais para salvar." }, { status: 413 });
+    }
+    corpo = JSON.parse(texto);
   } catch {
     return Response.json({ erro: "Corpo inválido." }, { status: 400 });
   }

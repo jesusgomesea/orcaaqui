@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-09-10-02",
+    data: "2026-09-10",
+    tipo: "correcao",
+    titulo: "O número do orçamento não muda mais",
+    descricao:
+      "Antes, excluir um orçamento renumerava todos os seguintes — o ORC que o cliente tinha em mãos deixava de bater com o daqui. Agora o número é gravado na criação e não muda mais. Os orçamentos que já existiam mantiveram exatamente os números que você via.",
+  },
+  {
     id: "2026-09-10-01",
     data: "2026-09-10",
     tipo: "novidade",
