@@ -78,15 +78,22 @@ Backup/portabilidade: exportar/importar o JSON inteiro do state (botões em Empr
 Cada empresa tem uma `moeda` padrão (ver `MOEDAS` em [helpers.ts](lib/helpers.ts)); cada orçamento pode sobrescrever a própria moeda (útil pra cliente de fora). `formatMoney(v, moeda)` sempre recebe a moeda explicitamente — nunca assumir BRL fixo num componente novo.
 
 ## Rotas
-Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o portão de autenticação, o `StoreProvider` e o Sidebar de uma vez.
+`/` é a landing pública ([app/page.tsx](app/page.tsx)) — quem chega no site não cai direto no login. Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o portão de autenticação, o `StoreProvider` e o Sidebar de uma vez.
 
-- **`/`** ([page.tsx](app/(app)/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
+- **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
 - **`/servicos`** — catálogo de serviços com preço padrão, reaproveitado no formulário de orçamento
 - **`/empresa`** — conta (trocar senha), gestão de empresas (criar/trocar/remover), dados da empresa ativa, logo, cor, moeda, dados bancários/Pix, backup JSON
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
-- **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, únicas telas acessíveis sem sessão
+- **`/entrar`, `/criar-conta`, `/recuperar-senha`, `/nova-senha`** — fora do route group, acessíveis sem sessão. Entrar e criar conta são **duas rotas** para o mesmo [FormularioAuth](components/auth/FormularioAuth.tsx), em vez de um `?modo=`: ler query string exigiria `useSearchParams()` e um limite de Suspense em volta do formulário, senão o prerender quebra o build.
+
+Para onde cada fluxo manda: login/cadastro confirmado e link de e-mail → `/painel`; link de recuperação → `/nova-senha`; "Sair" → `/` (a landing).
+
+## Landing
+[app/page.tsx](app/page.tsx) é Server Component e fica estática: só o [CabecalhoSite](components/site/CabecalhoSite.tsx) é cliente, para trocar "Entrar / Criar conta" por "Abrir painel" quando já há sessão — e ele não mostra nada enquanto `carregando`, porque piscar "Entrar" para quem já está logado é pior que o vazio.
+
+A [PreviaOrcamento](components/site/PreviaOrcamento.tsx) é ilustrativa e **não** reaproveita `gerarOrcamentoHtml`: aquela função existe para virar PDF (cores claras fixas, estilos inline), enquanto a peça da landing precisa acompanhar o tema da página.
 
 ## Tema claro/escuro
 A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tema.ts)), inline no `<head>` do layout raiz, **antes da primeira pintura** — sem isso a página pisca clara para quem escolheu escuro. Por isso `tema.ts` não importa React: o layout raiz é Server Component.

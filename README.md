@@ -4,6 +4,7 @@ Gerador de orçamentos com conta própria. Você entra com e-mail e senha, e seu
 
 ## Funcionalidades
 
+- Landing pública apresentando o sistema; o app fica atrás do login
 - Conta com e-mail e senha (Netlify Identity), com confirmação de e-mail e recuperação de senha
 - Dados salvos automaticamente na sua conta, acessíveis de qualquer dispositivo
 - Múltiplas empresas na mesma conta, cada uma com seus próprios clientes/orçamentos/serviços

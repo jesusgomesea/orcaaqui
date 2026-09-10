@@ -13,7 +13,7 @@ import { NOVIDADES } from "@/lib/changelog";
 import BotaoTema from "./BotaoTema";
 
 const ITEMS = [
-  { href: "/", label: "Painel", icon: LayoutDashboard },
+  { href: "/painel", label: "Painel", icon: LayoutDashboard },
   { href: "/orcamentos", label: "Orçamentos", icon: FileText },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/servicos", label: "Serviços", icon: Wrench },
@@ -45,7 +45,7 @@ function Sidebar() {
     }
     // Navegação completa é obrigatória aqui: router.push() faz navegação suave
     // e o cookie de sessão recém-limpo não chegaria ao servidor.
-    window.location.href = "/entrar";
+    window.location.href = "/";
   };
 
   return (
