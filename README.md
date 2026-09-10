@@ -13,6 +13,7 @@ Gerador de orçamentos com conta própria. Você entra com e-mail e senha, e seu
 - Gráfico de faturamento (orçado x aprovado) no Painel
 - Importar/exportar clientes em CSV
 - PDF via impressão do navegador (com logo e cor da empresa) e envio por WhatsApp
+- Instalável como aplicativo no celular e no computador (PWA)
 - Tema claro e escuro
 - Página de Novidades com o histórico de atualizações
 
@@ -49,6 +50,15 @@ Não precisa de variáveis de ambiente. Para conferir se o Identity está no ar:
 ## Vindo da versão sem login?
 
 Os dados que estavam no seu navegador sobem sozinhos para a conta no primeiro login, desde que você entre no mesmo navegador onde usava o Orça Aqui antes.
+
+## Instalar como aplicativo
+
+O Orça Aqui é um PWA: dá para instalar e abrir como um app, com ícone próprio e sem a barra do navegador.
+
+- **Android / Chrome / Edge / desktop**: use o botão **Instalar app** (no rodapé da página inicial ou do menu lateral), ou o ícone de instalação na barra de endereço
+- **iPhone / iPad (Safari)**: toque em **Compartilhar** e depois em **Adicionar à Tela de Início**
+
+Instalado, o app abre direto no painel. Ele continua precisando de internet — seus dados ficam na conta, não no aparelho.
 
 ## Backup dos dados
 

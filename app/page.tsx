@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import CabecalhoSite from "@/components/site/CabecalhoSite";
 import PreviaOrcamento from "@/components/site/PreviaOrcamento";
+import BotaoInstalar from "@/components/pwa/BotaoInstalar";
 import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -177,7 +178,10 @@ export default function LandingPage() {
           <span>
             Orça <span className="font-semibold text-text">Aqui</span>
           </span>
-          <Link href="/entrar" className="hover:text-text hover:underline">Entrar na minha conta</Link>
+          <div className="flex items-center gap-4">
+            <BotaoInstalar className="px-0 py-0 text-[12.5px] hover:bg-transparent hover:underline" />
+            <Link href="/entrar" className="hover:text-text hover:underline">Entrar na minha conta</Link>
+          </div>
         </div>
       </footer>
     </div>

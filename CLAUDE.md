@@ -95,6 +95,15 @@ Para onde cada fluxo manda: login/cadastro confirmado e link de e-mail → `/pai
 
 A [PreviaOrcamento](components/site/PreviaOrcamento.tsx) é ilustrativa e **não** reaproveita `gerarOrcamentoHtml`: aquela função existe para virar PDF (cores claras fixas, estilos inline), enquanto a peça da landing precisa acompanhar o tema da página.
 
+## PWA (instalação no celular e no computador)
+O manifest é gerado por [app/manifest.ts](app/manifest.ts) (`/manifest.webmanifest`); o Next injeta o `<link rel="manifest">` sozinho. `start_url` é `/painel`, não `/`: instalado, o app abre no sistema — a landing existe para quem ainda não conhece.
+
+O [service worker](public/sw.js) existe por dois motivos: é requisito do navegador para oferecer a instalação, e dá uma tela decente quando a rede cai ([/offline](app/offline/page.tsx), pré-cacheada). **Não é uso offline de verdade** — os dados vivem na conta e dependem da rede. A regra que não pode ser quebrada: nada de `/api/` ou `/.netlify/` entra em cache, porque servir resposta guardada ali mostraria orçamento errado ou sessão já expirada. Páginas são network-first; `/_next/static/*` é cache-first, seguro porque o nome tem hash. Ao mudar a estratégia, subir a versão em `CACHE` — o `activate` apaga as anteriores. O registro só acontece em produção ([RegistroServiceWorker](components/pwa/RegistroServiceWorker.tsx)): em dev o cache atrapalharia o hot reload.
+
+[BotaoInstalar](components/pwa/BotaoInstalar.tsx) (rodapé do Sidebar e da landing) segura o evento `beforeinstallprompt` **fora do React**, num store lido por `useSyncExternalStore` — ele costuma disparar antes de qualquer componente montar, e guardá-lo em estado perderia essa janela. Safari não dispara o evento: no iOS o componente mostra a instrução do menu Compartilhar.
+
+Ícones: `public/icone.svg` é a fonte, e os PNGs (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`) foram gerados a partir dele com `sharp`. O maskable é um arquivo separado, com fundo sangrado e a marca reduzida: o sistema recorta em círculo/squircle e o que passar da zona segura some. Trocar a marca significa refazer os quatro.
+
 ## Tema claro/escuro
 A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tema.ts)), inline no `<head>` do layout raiz, **antes da primeira pintura** — sem isso a página pisca clara para quem escolheu escuro. Por isso `tema.ts` não importa React: o layout raiz é Server Component.
 

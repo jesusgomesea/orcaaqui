@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-09-09-03",
+    data: "2026-09-09",
+    tipo: "novidade",
+    titulo: "Instale o Orça Aqui como aplicativo",
+    descricao:
+      "Agora dá pra instalar o Orça Aqui no celular ou no computador e abrir como um app, com ícone próprio e sem a barra do navegador. Use o botão \u201cInstalar app\u201d aqui no menu; no iPhone, toque em Compartilhar e depois em Adicionar à Tela de Início.",
+  },
+  {
     id: "2026-09-09-02",
     data: "2026-09-09",
     tipo: "novidade",

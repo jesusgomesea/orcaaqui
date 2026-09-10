@@ -11,6 +11,7 @@ import { useSessao } from "@/components/auth/ProvedorSessao";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { NOVIDADES } from "@/lib/changelog";
 import BotaoTema from "./BotaoTema";
+import BotaoInstalar from "@/components/pwa/BotaoInstalar";
 
 const ITEMS = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard },
@@ -118,6 +119,7 @@ function Sidebar() {
             )}
           </div>
         )}
+        <BotaoInstalar className="mb-1 w-full" />
         <div className="truncate px-1.5 text-[11.5px] text-text-muted" title={usuario?.email}>{usuario?.email}</div>
         <button type="button" onClick={handleSair} className={cn(CLASSE_ITEM, "mt-1 w-full text-text-muted hover:bg-bg hover:text-text")}>
           <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
