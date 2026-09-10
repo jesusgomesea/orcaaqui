@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root{
+  --bg:#f4f6f9;
+  --surface:#ffffff;
+  --border:#e3e7ee;
+  --border-strong:#d3d9e3;
+  --text:#1a2233;
+  --text-muted:#667085;
+
+  --primary:#2563eb;
+  --primary-dark:#1d4ed8;
+  --primary-light:#3b82f6;
+  --primary-tint:#eaf1ff;
+  --primary-tint-strong:#dbe8ff;
+
+  --success:#17803d;
+  --success-tint:#e7f6ec;
+  --danger:#d92d20;
+  --danger-tint:#fdece9;
+  --danger-border:#f3c6bd;
+  --warning:#b54708;
+  --warning-tint:#fef0e2;
+  --info:#175cd3;
+  --info-tint:#eaf1ff;
+
+  --shadow-xs:0 1px 2px rgba(16,24,40,.05);
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 2px 8px rgba(16,24,40,.06);
+  --shadow-md:0 4px 14px rgba(16,24,40,.08), 0 1px 3px rgba(16,24,40,.06);
+  --shadow-lg:0 16px 40px rgba(16,24,40,.16), 0 4px 10px rgba(16,24,40,.08);
+
+  --toast-bg:#1a2233;
+  --toast-text:#ffffff;
+  color-scheme: light;
+}
+
+/*
+  O tema é aplicado pela classe `.dark` no <html>, escrita por um script inline
+  no layout raiz antes da primeira pintura — sem ele a página aparece clara por
+  um instante para quem escolheu escuro.
+*/
+.dark{
+  --bg:#12161f;
+  --surface:#1a2029;
+  --border:#29313d;
+  --border-strong:#3a4352;
+  --text:#e6eaf2;
+  --text-muted:#98a3b6;
+
+  --primary:#3b82f6;
+  --primary-dark:#2563eb;
+  --primary-light:#60a5fa;
+  --primary-tint:#1b2841;
+  --primary-tint-strong:#243553;
+
+  --success:#4ade80;
+  --success-tint:#14301f;
+  --danger:#f87171;
+  --danger-tint:#3a1c19;
+  --danger-border:#6b2f29;
+  --warning:#fbbf24;
+  --warning-tint:#3a2a10;
+  --info:#60a5fa;
+  --info-tint:#1b2841;
+
+  --shadow-xs:0 1px 2px rgba(0,0,0,.3);
+  --shadow:0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.32);
+  --shadow-md:0 4px 14px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.3);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.35);
+
+  --toast-bg:#e6eaf2;
+  --toast-text:#12161f;
+  color-scheme: dark;
+}
+
+@theme inline{
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-primary-tint: var(--primary-tint);
+  --color-primary-tint-strong: var(--primary-tint-strong);
+
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-danger-border: var(--danger-border);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-info: var(--info);
+  --color-info-tint: var(--info-tint);
+
+  --font-sans: "Plus Jakarta Sans Variable", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/*
+  Sem animação de abertura/fechamento no diálogo: com diálogos aninhados
+  (ex: "+ Novo cliente" dentro do formulário de orçamento), a Presence do
+  Radix depende do evento `animationend` pra desmontar o conteúdo fechado.
+  Em StrictMode isso não dispara de forma confiável e o overlay preto fica
+  "grudado" na tela (parece o app ter travado/ficado em branco). Preferimos
+  fechar instantâneo a arriscar esse travamento.
+*/
+.dialog-content{
+  position:fixed;
+  left:50%;
+  top:50%;
+  translate:-50% -50%;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family: var(--font-sans);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/*
+  O documento impresso é sempre claro: o HTML do orçamento é montado com cores
+  fixas inline (ver gerarOrcamentoHtml), porque vira PDF e precisa ser
+  autocontido — imprimir o tema escuro gastaria tinta e sairia ilegível.
+*/
+@media print{
+  body *{visibility:hidden;}
+  #orcamento-print, #orcamento-print *{visibility:visible;}
+  #orcamento-print{display:block;position:absolute;top:0;left:0;width:100%;background:#fff;color:#1a2233;}
+}
