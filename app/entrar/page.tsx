@@ -21,7 +21,7 @@ export default function EntrarPage() {
 
   // Quem já tem sessão não precisa desta tela.
   useEffect(() => {
-    if (!carregando && usuario) window.location.href = "/";
+    if (!carregando && usuario) window.location.href = "/painel";
   }, [carregando, usuario]);
 
   const trocarModo = (novo: Modo) => {
@@ -56,7 +56,7 @@ export default function EntrarPage() {
       }
       // Navegação completa é obrigatória aqui: router.push() faz navegação
       // suave e o cookie de sessão recém-escrito não chegaria ao servidor.
-      window.location.href = "/";
+      window.location.href = "/painel";
     } catch (erroDaApi: unknown) {
       setErro(
         erroDaApi instanceof Error

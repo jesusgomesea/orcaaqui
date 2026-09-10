@@ -28,7 +28,7 @@ export default function NovaSenhaPage() {
     try {
       await updateUser({ password: senha });
       // Navegação completa: o cookie de sessão precisa chegar ao servidor.
-      window.location.href = "/";
+      window.location.href = "/painel";
     } catch (erroDaApi: unknown) {
       setErro(erroDaApi instanceof Error ? erroDaApi.message : "Não foi possível salvar a nova senha.");
       setEnviando(false);

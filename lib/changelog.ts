@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-09-10-01",
+    data: "2026-09-10",
+    tipo: "novidade",
+    titulo: "Página inicial de apresentação",
+    descricao:
+      "O endereço principal do Orça Aqui agora abre uma página que apresenta o serviço, em vez de ir direto para a tela de entrada. Quem já está logado é levado ao painel, que passou a ficar em /painel.",
+  },
+  {
     id: "2026-09-09-01",
     data: "2026-09-09",
     tipo: "novidade",

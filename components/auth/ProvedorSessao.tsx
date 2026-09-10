@@ -58,7 +58,7 @@ export default function ProvedorSessao({ children }: { children: ReactNode }) {
         // Na recuperação o usuário JÁ está logado, mas ainda sem senha nova.
         // Navegação completa é obrigatória: o cookie de sessão recém-escrito
         // precisa chegar ao servidor na próxima requisição.
-        window.location.href = resultado.type === "recovery" ? "/nova-senha" : "/";
+        window.location.href = resultado.type === "recovery" ? "/nova-senha" : "/painel";
       })
       .catch((erro: unknown) => {
         setErroDoLink(erro instanceof Error ? erro.message : "Não foi possível validar o link.");

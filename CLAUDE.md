@@ -80,13 +80,16 @@ Cada empresa tem uma `moeda` padrão (ver `MOEDAS` em [helpers.ts](lib/helpers.t
 ## Rotas
 Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o portão de autenticação, o `StoreProvider` e o Sidebar de uma vez.
 
-- **`/`** ([page.tsx](app/(app)/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
+**A raiz `/` é pública** ([app/page.tsx](app/page.tsx)) — a landing, fora do route group. O app autenticado começa em `/painel`. Por isso todo destino pós-autenticação aponta para `/painel`, nunca para `/`: `/entrar`, `/nova-senha`, o `handleAuthCallback()` do [ProvedorSessao](components/auth/ProvedorSessao.tsx) e o item "Painel" do [Sidebar](components/layout/Sidebar.tsx). O "Sair" é a exceção — leva de volta para a landing. Quem chega sem sessão numa rota do `(app)` continua caindo em `/entrar` (já queria o app, não a vitrine).
+
+- **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. Lê `useSessao()` só pra trocar o CTA por "Ir para o painel" quem já está logado; não usa o `StoreProvider`
+- **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
 - **`/servicos`** — catálogo de serviços com preço padrão, reaproveitado no formulário de orçamento
 - **`/empresa`** — conta (trocar senha), gestão de empresas (criar/trocar/remover), dados da empresa ativa, logo, cor, moeda, dados bancários/Pix, backup JSON
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
-- **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, únicas telas acessíveis sem sessão
+- **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
 
 ## Tema claro/escuro
 A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tema.ts)), inline no `<head>` do layout raiz, **antes da primeira pintura** — sem isso a página pisca clara para quem escolheu escuro. Por isso `tema.ts` não importa React: o layout raiz é Server Component.
