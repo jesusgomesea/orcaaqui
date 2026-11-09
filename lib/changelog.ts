@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-09-01",
+    data: "2026-11-09",
+    tipo: "correcao",
+    titulo: "Contrato e recibo em PDF direto do navegador",
+    descricao:
+      "Ao gerar um contrato ou recibo, a janela de impressão abre com o documento pronto: escolha \"Salvar como PDF\". Cabeçalho, logo e \"Página X de Y\" saem em todas as páginas. No histórico, o botão PDF abre de novo qualquer versão, e o botão .docx continua baixando o arquivo do Word para quem quiser editar.",
+  },
+  {
     id: "2026-11-08-05",
     data: "2026-11-08",
     tipo: "melhoria",
