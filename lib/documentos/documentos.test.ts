@@ -1,13 +1,12 @@
-// Testes das regras de contrato e recibo. Rodar com `npm test`
-// (node --test, sem dependência extra: o Node executa TypeScript direto).
+// Testes das regras de contrato e recibo. Rodar com `npm test` (Vitest).
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import PizZip from "pizzip";
 import type { Cliente, Orcamento, Prestador } from "../tipos";
-import { valorPorExtenso, dataPorExtenso, numeroPorExtenso } from "./extenso.ts";
+import { valorPorExtenso, dataPorExtenso, numeroPorExtenso } from "./extenso";
 import {
   calcularSinal,
   cpfValido,
@@ -17,9 +16,9 @@ import {
   formatarTelefone,
   hojeNoFuso,
   nomeArquivoDocumento,
-} from "./formatos.ts";
-import { montarCamposContrato, montarCamposRecibo, totalPagoAte } from "./campos.ts";
-import { preencherModelo, marcadoresRestantes, ErroMarcadores } from "./preencher.ts";
+} from "./formatos";
+import { montarCamposContrato, montarCamposRecibo, totalPagoAte } from "./campos";
+import { preencherModelo, marcadoresRestantes, ErroMarcadores } from "./preencher";
 
 const NBSP = " ";
 const reais = (s: string) => s.replace(" ", NBSP);

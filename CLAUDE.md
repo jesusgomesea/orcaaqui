@@ -11,7 +11,7 @@ Deixar qualquer prestador de serviço montar um orçamento com a cara da própri
 - Netlify Identity (`@netlify/identity`) para login; Netlify Blobs (`@netlify/blobs`) para os dados
 - Radix UI primitives (dialog, select, tabs) + `class-variance-authority` + `lucide-react`
 - `sonner` para toasts, `recharts` pro gráfico de faturamento
-- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`), `node --test` para as regras de documentos (`npm test`)
+- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`), Vitest para as regras em `lib/` (`npm test`; config em [vitest.config.mts](vitest.config.mts), alias `@/` igual ao do app)
 - `docxtemplater` + `pizzip` para preencher os modelos de contrato/recibo; Gotenberg (externo) para .docx → PDF
 
 ## Rodar localmente
@@ -102,7 +102,7 @@ A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tem
 O React só espelha esse estado, via `useSyncExternalStore` em [lib/useTema.ts](lib/useTema.ts) — no servidor não há como saber o que o script decidiu, e chutar causaria erro de hidratação. A paleta de cada tema é um bloco de variáveis CSS em [app/globals.css](app/globals.css); componente novo usa os tokens (`bg-surface`, `text-text-muted`…), nunca cor fixa.
 
 ## Geração de PDF
-Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` dentro de `app/(app)/orcamentos/page.tsx`, porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
+Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` em [lib/orcamento.ts](lib/orcamento.ts) (junto de `gerarTextoWhatsapp`, ambas com teste em `lib/orcamento.test.ts`), porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
 
 **Todo valor de dado interpolado ali passa por `escapeHtml()`, e a logo por `logoSegura()`** (ambos em [helpers.ts](lib/helpers.ts)). Isso vira `innerHTML`: sem escape, uma descrição com `<` some do PDF e um nome de cliente vindo de CSV de terceiro (`<img src=x onerror=...>`) roda script na sessão de quem importou, com acesso à `/api/dados`. Campo novo no documento impresso entra escapado.
 
@@ -116,11 +116,19 @@ Gera o contrato de prestação de serviços fotográficos e o recibo de pagament
 - **Numeração**: `NNN/AAAA` por empresa, sequências separadas de contrato e recibo, reinicia no ano (fuso de Teresina, `America/Fortaleza`). Cada geração — inclusive "nova versão" — consome um número novo; número reservado e não usado (falha na conversão) não volta.
 - **PDF via Gotenberg** ([lib/server/pdf.ts](lib/server/pdf.ts)): a Netlify não roda LibreOffice nas Functions. Variáveis de ambiente `GOTENBERG_URL` e, se o Gotenberg tiver basic auth, `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`. Sem `GOTENBERG_URL` o documento sai em .docx e a tela avisa. A imagem do Gotenberg precisa ter Georgia e Calibri (ou Carlito, de mesma métrica), senão a paginação muda.
 - **LGPD**: CPF nunca em URL nem em nome de arquivo (`Contrato 001-2026 - Ana Souza.pdf`); download só em `GET /api/documentos/arquivo/<id>`, atrás de `getUser()`, com a chave do arquivo sob o id do usuário.
-- **Regras puras com teste** em `lib/documentos/` (sinal de 40% arredondado para cima em reais, valor e data por extenso, CPF/telefone, montagem dos campos). Rodar `npm test` (`node --test`, sem dependência extra). Os imports entre arquivos dessa pasta levam `.ts` (`allowImportingTsExtensions`) para o Node executá-los direto; `import type` de fora da pasta é apagado e não pesa.
+- **Regras puras com teste** em `lib/documentos/` (sinal de 40% arredondado para cima em reais, valor e data por extenso, CPF/telefone, montagem dos campos). Rodar `npm test`.
 - Os modelos entram no pacote da função por `outputFileTracingIncludes` em [next.config.ts](next.config.ts).
 
 ## Diálogos (Radix)
 Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components/ui/dialog.tsx) **não têm animação de abrir/fechar de propósito**. Já existiu animação via CSS (`data-state` + `@keyframes`), mas com diálogos aninhados (ex: "+ Novo cliente" dentro do formulário de orçamento) a Presence do Radix não desmontava de forma confiável em StrictMode, deixando o overlay preto travado cobrindo a tela (parecia a página ter travado/ficado em branco). Não reintroduzir animação de fechamento sem testar bem o caso de diálogo aninhado.
+
+## Netlify Blobs: armadilhas (já derrubaram o painel do EJ)
+Todo acesso ao Blobs passa por `storeBlobs()` em [lib/server/blobs.ts](lib/server/blobs.ts) — **nunca chamar `getStore` direto**. Ele entrega ao Blobs um `fetch` próprio que resolve três problemas:
+
+- **`res.body.cancel()` nunca termina no Netlify.** O Blobs descarta assim o corpo das respostas que não lê: 404 (chave ainda não existe — o primeiro acesso de um usuário novo), 412 (gravação condicional recusada — a numeração de contratos/recibos depende disso) e toda gravação. A função ficava presa até ser cortada (502). `semCorpoSeDescartavel()` ([lib/server/blobsFetch.ts](lib/server/blobsFetch.ts), testada) devolve essas respostas sem corpo; só GET 200 mantém o corpo.
+- **`fetch` do Next ≠ `fetch` do Node.** Usa `globalThis.fetch._nextOriginalFetch ?? globalThis.fetch`, resolvido a cada chamada; com a camada de cache do Next a leitura travava.
+- **Repetições silenciosas.** O Blobs repete chamadas com erro (5xx, 429, rede) esperando segundos entre tentativas. Cada etapa de rede das rotas passa por `comLimite()` (3 s; login do Identity incluído), e a falha vira 500 com a etapa que travou e a última resposta do Blobs (`respostaDeFalha`). A tela de carregamento mostra esse detalhe.
+- A conversão de PDF tem limite de 6 s: somada às etapas, a resposta precisa sair antes do corte de ~10 s da função.
 
 ## Deploy (Netlify)
 [netlify.toml](netlify.toml) usa o `@netlify/plugin-nextjs`, que transforma as rotas de servidor em Netlify Functions v2 — formato exigido pelo Identity. Única variável de ambiente: `GOTENBERG_URL` (e opcionalmente `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`), para os PDFs de contrato e recibo — ver "Contratos e recibos".
@@ -130,7 +138,7 @@ Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components
 No painel, é preciso ter **Identity habilitado** e decidir `Registration preferences` (`Open` / `Invite only`) e o `autoconfirm`. Os modelos de e-mail chegam em inglês por padrão — traduzir. Para conferir o estado sem abrir o painel: `https://SEU-SITE.netlify.app/.netlify/identity/settings` (404 = Identity desligado).
 
 ## CI
-[.github/workflows/checks.yml](.github/workflows/checks.yml) roda `npm ci`, `typecheck`, `lint` e `build` em todo push e PR. O `npm ci` é de propósito: falha quando o `package-lock.json` está fora de sincronia com o `package.json` — exatamente o que derruba o build da Netlify e deixa o site num build antigo sem aviso. Preferir abrir PR e esperar o verde a empurrar direto em `main`, já que push em `main` publica em produção.
+[.github/workflows/checks.yml](.github/workflows/checks.yml) roda `npm ci`, `typecheck`, `lint`, `test` e `build` em todo push e PR. O `npm ci` é de propósito: falha quando o `package-lock.json` está fora de sincronia com o `package.json` — exatamente o que derruba o build da Netlify e deixa o site num build antigo sem aviso. Preferir abrir PR e esperar o verde a empurrar direto em `main`, já que push em `main` publica em produção.
 
 ## Convenções
 - Nomes de campos/variáveis em português, comentários em português quando necessário

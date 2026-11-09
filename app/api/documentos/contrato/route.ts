@@ -1,10 +1,14 @@
-import { getUser } from "@netlify/identity";
 import { gerarContrato } from "@/lib/server/gerarDocumentos";
-import { idValido, lerCorpo, respostaDeErro } from "../_comum";
+import { idValido, lerCorpo, respostaDeErro, usuarioLogado } from "../_comum";
 
 /** POST { empresaId, orcamentoId } — gera nova versão do contrato (nunca sobrescreve). */
 export async function POST(request: Request) {
-  const usuario = await getUser();
+  let usuario;
+  try {
+    usuario = await usuarioLogado();
+  } catch (e) {
+    return respostaDeErro(e);
+  }
   if (!usuario) return Response.json({ erro: "Não autenticado" }, { status: 401 });
 
   const corpo = await lerCorpo(request);

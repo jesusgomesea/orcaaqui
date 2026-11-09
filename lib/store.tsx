@@ -226,7 +226,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const resposta = await fetch("/api/dados");
-        if (!resposta.ok) throw new Error(`Falha ao carregar (${resposta.status})`);
+        if (!resposta.ok) {
+          // A rota devolve a causa (etapa que travou, última resposta do Blobs).
+          const { erro } = (await resposta.json().catch(() => ({}))) as { erro?: string };
+          throw new Error(erro || `Falha ao carregar (${resposta.status})`);
+        }
         const { estado } = (await resposta.json()) as { estado: EstadoImportado | null };
         if (!vivo) return;
 
@@ -245,7 +249,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (!vivo) return;
         console.error("Não foi possível carregar os dados da sua conta.", e);
-        setErroDeCarga("Não foi possível carregar seus dados. Verifique a conexão e recarregue a página.");
+        const detalhe = e instanceof Error && !e.message.startsWith("Failed to fetch") ? ` Detalhe: ${e.message}` : "";
+        setErroDeCarga(`Não foi possível carregar seus dados. Verifique a conexão e recarregue a página.${detalhe}`);
       }
     })();
 

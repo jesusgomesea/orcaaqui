@@ -2,8 +2,8 @@
 // lista o que falta. O texto jurídico mora só nos modelos — aqui só há dados.
 
 import type { Cliente, Orcamento, Pagamento, Prestador, TipoPagamento } from "../tipos";
-import { calcOrcamentoTotais } from "../helpers.ts";
-import { dataPorExtenso, valorPorExtenso } from "./extenso.ts";
+import { calcOrcamentoTotais } from "../helpers";
+import { dataPorExtenso, valorPorExtenso } from "./extenso";
 import {
   calcularSinal,
   cpfValido,
@@ -14,7 +14,7 @@ import {
   formatarTelefone,
   paraCentavos,
   telefoneValido,
-} from "./formatos.ts";
+} from "./formatos";
 
 export type Campos = Record<string, string>;
 

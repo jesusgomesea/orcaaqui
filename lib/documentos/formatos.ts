@@ -1,7 +1,5 @@
 // Regras e formatos usados por contratos e recibos. Sem dependências de React
 // nem de servidor: roda no navegador, na rota de API e nos testes (`npm test`).
-// Os imports entre arquivos desta pasta levam `.ts` para o `node --test`
-// conseguir executá-los direto, sem bundler.
 
 /** Fuso de Teresina/PI (UTC-3, sem horário de verão). */
 export const FUSO_DOCUMENTOS = "America/Fortaleza";

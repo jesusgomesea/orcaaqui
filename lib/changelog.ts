@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-02",
+    data: "2026-11-08",
+    tipo: "correcao",
+    titulo: "Mais estabilidade ao carregar e salvar",
+    descricao:
+      "Corrigimos uma falha do armazenamento que podia deixar a tela em \"Carregando seus dados…\" ou travar a gravação, principalmente no primeiro acesso de uma conta nova e ao gerar contratos e recibos. Se algo falhar, a mensagem agora diz o motivo.",
+  },
+  {
     id: "2026-11-08-01",
     data: "2026-11-08",
     tipo: "novidade",
