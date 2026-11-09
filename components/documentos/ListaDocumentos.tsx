@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, Share2 } from "lucide-react";
+import { Download, Printer, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { baixarDocumento, compartilharDocumento } from "@/lib/documentosCliente";
+import { imprimirDocumento } from "@/lib/documentosImpressao";
 import { formatarData } from "@/lib/documentos/formatos";
 import type { DocumentoGerado } from "@/lib/tipos";
 
@@ -33,10 +34,11 @@ export function ListaDocumentos({
 
   const ordenados = [...documentos].sort((a, b) => (a.geradoEm < b.geradoEm ? 1 : -1));
 
-  const agir = async (doc: DocumentoGerado, acao: "baixar" | "compartilhar") => {
+  const agir = async (doc: DocumentoGerado, acao: "pdf" | "baixar" | "compartilhar") => {
     setOcupado(doc.id + acao);
     try {
-      if (acao === "baixar") await baixarDocumento(doc);
+      if (acao === "pdf") await imprimirDocumento(doc);
+      else if (acao === "baixar") await baixarDocumento(doc);
       else if ((await compartilharDocumento(doc)) === "baixado") toast.info("Compartilhamento indisponível neste navegador — arquivo baixado.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível abrir o documento.");
@@ -55,7 +57,6 @@ export function ListaDocumentos({
               <span>nº {doc.numero}</span>
               <span className="font-normal text-text-muted">· v{doc.versao}</span>
               {i === 0 && !mostrarTipo && <Badge tone="green">Atual</Badge>}
-              {doc.formato === "docx" && <Badge tone="amber">.docx</Badge>}
             </div>
             <div className="text-[11.5px] text-text-muted">
               {formatarData(doc.dataGeracao)} {horaGeracao(doc.geradoEm)}
@@ -63,8 +64,14 @@ export function ListaDocumentos({
             </div>
           </div>
           <div className="flex gap-1.5">
-            <Button variant="secondary" size="sm" disabled={!!ocupado} onClick={() => agir(doc, "baixar")} title="Baixar">
-              <Download className="h-3.5 w-3.5" strokeWidth={1.8} /> Baixar
+            {/* .docx: o PDF sai pela impressão do navegador ("Salvar como PDF"). */}
+            {doc.formato === "docx" && (
+              <Button variant="secondary" size="sm" disabled={!!ocupado} onClick={() => agir(doc, "pdf")} title="Abrir a impressão para salvar em PDF">
+                <Printer className="h-3.5 w-3.5" strokeWidth={1.8} /> PDF
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" disabled={!!ocupado} onClick={() => agir(doc, "baixar")} title={doc.formato === "docx" ? "Baixar o .docx (Word)" : "Baixar"}>
+              <Download className="h-3.5 w-3.5" strokeWidth={1.8} /> {doc.formato === "docx" ? ".docx" : "Baixar"}
             </Button>
             <Button variant="secondary" size="sm" disabled={!!ocupado} onClick={() => agir(doc, "compartilhar")} title="Compartilhar">
               <Share2 className="h-3.5 w-3.5" strokeWidth={1.8} />

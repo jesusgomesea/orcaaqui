@@ -138,4 +138,10 @@ body{
   body *{visibility:hidden;}
   #orcamento-print, #orcamento-print *{visibility:visible;}
   #orcamento-print{display:block;position:absolute;top:0;left:0;width:100%;background:#fff;color:#1a2233;}
+  /* Contrato/recibo desenhado pelo docx-preview (lib/documentosImpressao.ts): as
+     margens vêm da regra @page montada do .docx, então a "folha" que ele desenha
+     perde tamanho e margem próprios e só o conteúdo flui pelas páginas. */
+  #orcamento-print.impressao-docx{color:#000;}
+  #orcamento-print.impressao-docx section.docx{width:auto!important;min-height:0!important;padding:0!important;margin:0!important;box-shadow:none!important;background:transparent!important;overflow:visible!important;}
+  #orcamento-print.impressao-docx section.docx + section.docx{break-before:page;}
 }

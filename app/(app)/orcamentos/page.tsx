@@ -16,6 +16,7 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
+import { limparImpressaoDocx } from "@/lib/documentosImpressao";
 import { MontadorOrcamento } from "@/components/gerador/MontadorOrcamento";
 import { calculoDoOrcamento, gerarMensagemOrcamento, linkWhatsApp, refDaSelecao, selecaoDoOrcamento } from "@/lib/gerador";
 import { percentualSinal } from "@/lib/agenda";
@@ -354,6 +355,8 @@ export default function OrcamentosPage() {
     const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
     const container = document.getElementById("orcamento-print");
     if (!container) return;
+    // Tira a regra @page de um contrato/recibo impresso antes, se houver.
+    limparImpressaoDocx();
     container.innerHTML = gerarOrcamentoHtml(o, cliente, formatarNumeroOrcamento(o.numero), empresaAtiva);
     window.print();
   };

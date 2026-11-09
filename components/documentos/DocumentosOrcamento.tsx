@@ -9,11 +9,12 @@ import { Input, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { ListaDocumentos } from "./ListaDocumentos";
 import { ErroDocumento, gerarContrato, gerarRecibo, useDocumentos } from "@/lib/documentosCliente";
+import { imprimirDocumento } from "@/lib/documentosImpressao";
 import { PAGAMENTO_LABEL, valorSugerido } from "@/lib/documentos/campos";
 import { calcularSinal, formatarData, formatarReais, paraCentavos } from "@/lib/documentos/formatos";
 import { calcOrcamentoTotais, todayStr, uuid } from "@/lib/helpers";
 import { percentualSinal } from "@/lib/agenda";
-import type { Orcamento, Pagamento, TipoPagamento } from "@/lib/tipos";
+import type { DocumentoGerado, Orcamento, Pagamento, TipoPagamento } from "@/lib/tipos";
 
 function ListaFaltando({ titulo, itens }: { titulo: string; itens: string[] }) {
   if (!itens.length) return null;
@@ -32,7 +33,7 @@ const TIPOS: TipoPagamento[] = ["sinal", "restante", "integral"];
 /** Contrato (com histórico de versões) e pagamentos/recibos de um orçamento. */
 export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
   const { empresaAtiva, updateOrcamento, garantirSalvo } = useStore();
-  const { documentos, pdfDisponivel, carregando, erro, recarregar } = useDocumentos(empresaAtiva.id);
+  const { documentos, carregando, erro, recarregar } = useDocumentos(empresaAtiva.id);
 
   const [gerando, setGerando] = useState<string | null>(null);
   const [faltando, setFaltando] = useState<{ alvo: string; itens: string[] }>({ alvo: "", itens: [] });
@@ -51,15 +52,24 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
   const [novaData, setNovaData] = useState(todayStr());
   const [novaForma, setNovaForma] = useState("Pix");
 
-  const executar = async (alvo: string, acao: () => Promise<unknown>, sucesso: string) => {
+  const executar = async (alvo: string, acao: () => Promise<DocumentoGerado>, sucesso: string) => {
     setGerando(alvo);
     setFaltando({ alvo: "", itens: [] });
     try {
       // O servidor lê os dados gravados: sobe o que ainda está no debounce.
       if (!(await garantirSalvo())) throw new ErroDocumento("Não foi possível salvar as últimas alterações. Verifique a conexão.");
-      await acao();
+      const doc = await acao();
       toast.success(sucesso);
       await recarregar();
+      // Sem conversor no servidor, o PDF sai pela impressão do navegador.
+      if (doc.formato === "docx") {
+        try {
+          await imprimirDocumento(doc);
+        } catch (e) {
+          console.error(e);
+          toast.error("Documento gerado, mas não foi possível abrir a impressão. Use o botão PDF no histórico.");
+        }
+      }
     } catch (e) {
       if (e instanceof ErroDocumento && e.faltando.length) setFaltando({ alvo, itens: e.faltando });
       toast.error(e instanceof Error ? e.message : "Não foi possível gerar o documento.");
@@ -101,12 +111,6 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
 
   return (
     <div className="space-y-4">
-      {!pdfDisponivel && (
-        <p className="rounded-lg border border-warning bg-warning-tint p-2.5 text-[12px] text-warning">
-          A conversão para PDF não está configurada no servidor (GOTENBERG_URL). Os documentos estão saindo em .docx.
-        </p>
-      )}
-
       <section className="rounded-lg border border-border p-3.5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-1.5 text-[14px] font-semibold text-text">
