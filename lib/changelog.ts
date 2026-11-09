@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-03",
+    data: "2026-11-08",
+    tipo: "novidade",
+    titulo: "Montar orçamento pelo catálogo",
+    descricao:
+      "Em Orçamentos, \"Montar orçamento\" monta pelo seu catálogo: escolha os serviços e as quantidades (com preço menor por volume, se configurado), a faixa de deslocamento, desconto e acréscimo, e veja total, sinal e restante na hora. O cliente pode ser só nome e WhatsApp. \"Enviar pelo WhatsApp\" salva o orçamento como enviado e abre a conversa com a mensagem pronta. Em Empresa → Orçamento e agenda, configure o percentual do sinal, a validade e as faixas de deslocamento.",
+  },
+  {
     id: "2026-11-08-02",
     data: "2026-11-08",
     tipo: "correcao",

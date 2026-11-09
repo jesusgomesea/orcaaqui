@@ -103,7 +103,7 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 
 - **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. A página é Server Component só pra poder exportar `metadata` (título/OG, já que o link circula em WhatsApp e redes); o conteúdo é a ilha cliente [components/landing/Landing.tsx](components/landing/Landing.tsx), que lê `useSessao()` apenas pra trocar o CTA por "Ir para o painel" de quem já está logado. Não usa o `StoreProvider`
 - **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
-- **`/orcamentos`** — CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
+- **`/orcamentos`** — "Montar orçamento" (gerador, ver abaixo) e CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
 - **`/servicos`** — catálogo de serviços com preço padrão, reaproveitado no formulário de orçamento
 - **`/empresa`** — conta (trocar senha), gestão de empresas (criar/trocar/remover), dados da empresa ativa, logo, cor, moeda, dados bancários/Pix, backup JSON
@@ -135,6 +135,15 @@ Gera o contrato de prestação de serviços fotográficos e o recibo de pagament
 
 ## Diálogos (Radix)
 Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components/ui/dialog.tsx) **não têm animação de abrir/fechar de propósito**. Já existiu animação via CSS (`data-state` + `@keyframes`), mas com diálogos aninhados (ex: "+ Novo cliente" dentro do formulário de orçamento) a Presence do Radix não desmontava de forma confiável em StrictMode, deixando o overlay preto travado cobrindo a tela (parecia a página ter travado/ficado em branco). Não reintroduzir animação de fechamento sem testar bem o caso de diálogo aninhado.
+
+## Gerador de orçamento ("Montar orçamento")
+O prestador monta pelo catálogo ([components/gerador/MontadorOrcamento.tsx](components/gerador/MontadorOrcamento.tsx), regras em [lib/gerador.ts](lib/gerador.ts), testadas): serviços × quantidade com preço por volume (`precoUnitario`: a partir de `volumeMin`, TODAS as unidades saem por `precoVolume`), faixa de deslocamento (`config.deslocamentos`), desconto e acréscimo em valor. Total, sinal e restante ao vivo. "Enviar pelo WhatsApp" salva com `origem: "gerador"`, `codigoRef: "ORC-0012"` e status **enviado** (o botão de WhatsApp da lista também tira do rascunho).
+
+- **Nunca confiar no total escrito.** A mensagem leva `[ref ORC-0012 e=<config.codigo> v<config.versaoCatalogo> i=<Servico.codigo>:<qtd>,… d=<desconto> a=<acréscimo> ds=<faixa> dt=AAAA-MM-DD hr=HH:MM]` (campos zerados omitidos). Quem cola recalcula pelo catálogo (`recalcularRefOrc`): versão ou empresa diferente vira aviso; serviço que sumiu impede o cálculo. Os rótulos da mensagem (`*Cliente:*`, `*WhatsApp:*`, `*Serviço:*`, `*Data desejada:*`, `*Local:*`, `*Total:*`, `*Observações:*`) são os mesmos do site do EJ. Texto livre passa por `limparLivre` (uma linha, sem `[`, `]`, `*`).
+- Os itens gravados levam `servicoId` (e `deslocamentoId` no item de deslocamento, marcado como adicional para o contrato). `selecaoDoOrcamento` reabre no montador; com item livre, só o formulário livre edita. Reenviar usa os preços **gravados** (`calculoDoOrcamento`), não os de hoje.
+- O número `ORC-…` é previsto como `empresaAtiva.proximoNumero` no clique — o mesmo que o `addOrcamento` atribui.
+
+**Tabela do EJ** ([lib/ej.ts](lib/ej.ts), [components/gerador/MontadorEj.tsx](components/gerador/MontadorEj.tsx)): com `config.urlTabelaEj` (sugestão `https://ejfotografia.netlify.app`, nunca fixo no código), o montador ganha a aba "Tabela do EJ". Os pacotes vêm de `GET <url>/api/catalogo` e o cálculo de `GET <url>/api/recalcular?ref=…`, chamados direto do navegador (as rotas são públicas, com CORS liberado). **Preço e regra do EJ ficam só lá**; aqui existe apenas o formato da linha `[ref EJ-…]` (`codificarRefEj`, o contrato entre os dois sistemas, ver MANUTENCAO §3 do EJ). **Só a linha `[ref]` é enviada** — `extrairRefEj` garante que nome, telefone e local nunca vão para o EJ. Itens "a combinar" entram com valor zero.
 
 ## Netlify Blobs: armadilhas (já derrubaram o painel do EJ)
 Todo acesso ao Blobs passa por `storeBlobs()` em [lib/server/blobs.ts](lib/server/blobs.ts) — **nunca chamar `getStore` direto**. Ele entrega ao Blobs um `fetch` próprio que resolve três problemas:

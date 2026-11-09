@@ -27,6 +27,8 @@ export interface ItemOrcamento {
   tipo?: TipoItem;
   /** Serviço do catálogo de onde o item veio; é o que permite a `[ref]` recalcular. */
   servicoId?: string;
+  /** Item de deslocamento: id da faixa em `config.deslocamentos`. */
+  deslocamentoId?: string;
 }
 
 /**
