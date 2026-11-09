@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { calcOrcamentoTotais } from "./helpers";
 import { gerarOrcamentoHtml, gerarTextoWhatsapp } from "./orcamento";
+import { configPadrao } from "./estado";
 import type { Cliente, Empresa, Orcamento } from "./tipos";
 
 const empresa = {
@@ -19,6 +20,8 @@ const empresa = {
   clientes: [],
   orcamentos: [],
   servicos: [],
+  config: configPadrao("e1"),
+  agendamentos: [],
   proximoNumero: 2,
 } satisfies Empresa;
 

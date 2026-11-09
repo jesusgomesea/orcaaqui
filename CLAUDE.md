@@ -51,15 +51,22 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
     dadosBancarios, condicoesPadrao,
     clientes: [{ id, nome, documento, telefone, email, endereco, observacoes }],
     orcamentos: [{
-      id, criadoEm, clienteId, data, validadeDias, moeda,
-      itens: [{ id, descricao, quantidade, valorUnitario }],
+      id, numero, criadoEm, clienteId, data, validadeDias, moeda,
+      itens: [{ id, descricao, quantidade, valorUnitario, tipo? /* adicional */, servicoId? }],
       desconto, descontoTipo /* "valor" | "percentual" */, acrescimo,
       condicoes, observacoes,
       status /* rascunho | enviado | aprovado | recusado */,
-      servicoContrato?, pagamentos?: [{ id, tipo /* sinal | restante | integral */, valor, data, forma }],
+      servicoContrato? /* data, horários e local do serviço moram aqui */,
+      pagamentos?: [{ id, tipo /* sinal | restante | integral | outro */, valor, data, forma, descricao? }],
+      codigoRef? /* ORC-0012 | EJ-XXXXX */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
-    servicos: [{ id, categoria, nome, descricao, valor }],
+    servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
+    config: { sinalPercentual /* 40 */, validadeDias, deslocamentos: [{ id, nome, valor }],
+              etapasAgenda: [{ id, nome, descricao? }], urlTabelaEj?, versaoCatalogo, codigo },
+    agendamentos: [{ id, criadoEm, atualizadoEm, orcamentoId, clienteId, moeda, etapa, historico,
+                     extras: [{ id, descricao, valor }], notas, valorCombinado, sinalPercentual }],
+    proximoNumero,
   }],
   novidadesVistoId: string | null,
 }
@@ -67,7 +74,14 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
 
 Cada empresa é totalmente isolada (clientes/orçamentos/serviços próprios) — pense nela como um "workspace". A empresa ativa é acessada via `useStore().empresaAtiva` (não `state.empresas[0]` — sempre resolver pelo `empresaAtivaId`). Toda mutação de cliente/orçamento/serviço no store (`addCliente`, `addOrcamento`, etc.) escreve na empresa ativa, nunca precisa de `empresaId` como argumento.
 
-**Migrações de formato.** `normalizar()` em `store.tsx` é o caminho por onde passa tudo que entra (servidor, backup importado, localStorage antigo). Dentro dele, `migrarSeNecessario()` cobre o formato v1, de empresa única (`{ empresa, clientes, orcamentos }` no topo). Ao mexer no formato de novo, manter esse caminho — é o que evita perda de dados de quem já usava.
+**Migrações de formato.** `normalizar()` em [lib/estado.ts](lib/estado.ts) (puro, testado em `lib/estado.test.ts` com um estado e um backup antigos) é o caminho por onde passa tudo que entra (servidor, backup importado, localStorage antigo). Dentro dele, `migrarSeNecessario()` cobre o formato v1, de empresa única (`{ empresa, clientes, orcamentos }` no topo). Ao mexer no formato de novo, manter esse caminho — é o que evita perda de dados de quem já usava. Campo novo entra opcional ou ganha default em `mergeEmpresa`/`normalizarConfig`, e ganha caso no teste.
+
+- **Códigos curtos são derivados do id** (`codigoDeId`, hash): `config.codigo` da empresa e `Servico.codigo` vão na linha `[ref]` das mensagens. Uma conta antiga ganha sempre os mesmos códigos ao abrir, mesmo antes de gravar — se fossem aleatórios, recarregar a página mudaria a `[ref]` de mensagens já enviadas. `Servico.codigo` nunca muda depois de criado (o store ignora `codigo` em `updateServico`).
+- **`config.versaoCatalogo`** sobe sozinho quando valor/preço por volume de um serviço muda ou um serviço é removido (`mudouPreco` + `subirVersaoCatalogo`); quem cola uma `[ref]` com versão antiga recebe aviso de tabela antiga.
+
+**Agenda** ([lib/agenda.ts](lib/agenda.ts)): porte do modelo do painel do EJ. O agendamento guarda só etapas, histórico, extras, notas, `valorCombinado` e o `sinalPercentual` gravado na criação; **pagamentos são os de `Orcamento.pagamentos`** (os mesmos dos recibos) e data/horário/local vêm de `Orcamento.servicoContrato` — não duplicar. `cancelado` é etapa fixa (`ETAPA_CANCELADO`); a última de `config.etapasAgenda` é a de concluído.
+
+**Sinal** = `calcularSinal(total, %)` em [lib/documentos/formatos.ts](lib/documentos/formatos.ts): `ceil(total × % / 100)` em reais inteiros, restante = total − sinal. O % vem de `percentualSinal()`: o do orçamento, senão o da empresa, senão 40. **O contrato só sai com 40%**: o modelo traz "Sinal (40%)" escrito, então outro percentual bloqueia a geração (`SINAL_DO_MODELO`). Pagamento `outro` (pós-venda) não gera recibo.
 
 **Migração do localStorage.** Quem usava a versão sem login tinha tudo em `localStorage["orcaaqui-dados-v1"]`. No primeiro login, se a conta ainda não tem dados no servidor, o store sobe o que houver nessa chave e depois a arquiva em `orcaaqui-dados-migrado-v1`. O arquivamento não é opcional: sem ele, a próxima conta a entrar neste mesmo navegador importaria os dados da primeira.
 

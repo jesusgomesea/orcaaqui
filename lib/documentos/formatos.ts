@@ -33,14 +33,17 @@ export function formatarReais(valor: number): string {
 }
 
 /**
- * Sinal de 40% do total, arredondado para cima em reais inteiros (mesma regra
- * do site de orçamentos). Conta em centavos inteiros para não sofrer com
- * ponto flutuante: 40% de c centavos, em reais, é c*4/1000.
+ * Sinal = `ceil(total × % / 100)` em reais inteiros (padrão 40%, a mesma regra
+ * do site do EJ), e restante = total − sinal, então sinal + restante = total.
+ * Conta em centavos inteiros para não sofrer com ponto flutuante: % de c
+ * centavos, em reais, é c × % / 10000. O sinal nunca passa do total.
  */
-export function calcularSinal(total: number): { sinal: number; restante: number } {
+export function calcularSinal(total: number, percentual = 40): { sinal: number; restante: number } {
   const totalCentavos = paraCentavos(total);
-  if (totalCentavos <= 0) return { sinal: 0, restante: 0 };
-  const sinalReais = Math.ceil((totalCentavos * 4) / 1000);
+  const pct = Math.min(100, Math.max(0, Number(percentual) || 0));
+  if (totalCentavos <= 0 || pct <= 0) return { sinal: 0, restante: Math.max(0, totalCentavos) / 100 };
+  // Inteiro × inteiro antes de dividir; o -1e-9 evita que 13320,000000001 vire 13321.
+  const sinalReais = Math.ceil((totalCentavos * pct) / 10000 - 1e-9);
   const sinalCentavos = Math.min(sinalReais * 100, totalCentavos);
   return { sinal: sinalCentavos / 100, restante: (totalCentavos - sinalCentavos) / 100 };
 }

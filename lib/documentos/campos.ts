@@ -24,7 +24,8 @@ export interface Resultado {
   faltando: string[];
 }
 
-export const RECIBO_TIPO_TEXTO: Record<TipoPagamento, string> = {
+/** Texto do modelo de recibo. `outro` (pós-venda) fica de fora: o modelo não tem texto para ele. */
+export const RECIBO_TIPO_TEXTO: Record<Exclude<TipoPagamento, "outro">, string> = {
   sinal: "Sinal (40%) para reserva de data",
   restante: "Restante (60%) e quitação total",
   integral: "Pagamento integral",
@@ -34,7 +35,15 @@ export const PAGAMENTO_LABEL: Record<TipoPagamento, string> = {
   sinal: "Sinal (40%)",
   restante: "Restante (60%)",
   integral: "Integral",
+  outro: "Outro",
 };
+
+/**
+ * O modelo de contrato traz "Sinal (40%)" e "Restante (60%)" escritos (cláusula
+ * 2.1), e o texto jurídico não é editado por aqui. Sinal diferente geraria um
+ * contrato que se contradiz — então a geração é bloqueada.
+ */
+export const SINAL_DO_MODELO = 40;
 
 const texto = (v: unknown) => String(v ?? "").trim();
 
@@ -146,6 +155,8 @@ export interface EntradaContrato {
   numero: string;
   /** YYYY-MM-DD da geração */
   dataGeracao: string;
+  /** % do sinal combinado no orçamento; ausente = 40. */
+  sinalPercentual?: number;
 }
 
 export function montarCamposContrato(e: EntradaContrato): Resultado {
@@ -153,6 +164,12 @@ export function montarCamposContrato(e: EntradaContrato): Resultado {
   const { orcamento: o } = e;
 
   if (o.status !== "aprovado") faltando.push("Orçamento com status Aprovado");
+  const pct = e.sinalPercentual ?? SINAL_DO_MODELO;
+  if (pct !== SINAL_DO_MODELO) {
+    faltando.push(
+      `Sinal de ${SINAL_DO_MODELO}% — o modelo de contrato traz esse percentual escrito, e este orçamento usa ${String(pct).replace(".", ",")}%`
+    );
+  }
   checarMoeda(o, faltando);
 
   const prestador = camposPrestador(e.prestador, faltando, true);
@@ -192,7 +209,7 @@ export function montarCamposContrato(e: EntradaContrato): Resultado {
 
   const total = totalDoOrcamento(o);
   if (paraCentavos(total) <= 0) faltando.push("Valor total do orçamento maior que zero");
-  const { sinal, restante } = calcularSinal(total);
+  const { sinal, restante } = calcularSinal(total, SINAL_DO_MODELO);
 
   exigir(faltando, texto(e.numero), "Número do contrato");
   exigir(faltando, texto(e.dataGeracao), "Data do contrato");
@@ -236,10 +253,11 @@ export function totalPagoAte(pagamentos: Pagamento[], pagamentoId: string): numb
 }
 
 /** Valor sugerido ao registrar um pagamento de cada tipo. */
-export function valorSugerido(o: Orcamento, tipo: TipoPagamento): number {
+export function valorSugerido(o: Orcamento, tipo: TipoPagamento, sinalPercentual = SINAL_DO_MODELO): number {
   const total = totalDoOrcamento(o);
+  if (tipo === "outro") return 0;
   if (tipo === "integral") return total;
-  if (tipo === "sinal") return calcularSinal(total).sinal;
+  if (tipo === "sinal") return calcularSinal(total, sinalPercentual).sinal;
   const pago = (o.pagamentos || []).reduce((s, p) => s + paraCentavos(p.valor), 0) / 100;
   return Math.max(0, (paraCentavos(total) - paraCentavos(pago)) / 100);
 }
@@ -263,6 +281,7 @@ export function montarCamposRecibo(e: EntradaRecibo): Resultado {
 
   checarMoeda(o, faltando);
   if (!pagamento) faltando.push("Pagamento registrado no orçamento");
+  if (pagamento?.tipo === "outro") faltando.push("Pagamento do tipo sinal, restante ou integral (o modelo de recibo não cobre outros)");
   if (!e.contrato) faltando.push("Contrato gerado para este orçamento (o recibo cita o número do contrato)");
 
   const prestador = camposPrestador(e.prestador, faltando, false);
@@ -287,7 +306,7 @@ export function montarCamposRecibo(e: EntradaRecibo): Resultado {
     ...cliente,
     ...basico,
     recibo_numero: texto(e.numero),
-    recibo_tipo: pagamento ? RECIBO_TIPO_TEXTO[pagamento.tipo] ?? "" : "",
+    recibo_tipo: pagamento && pagamento.tipo !== "outro" ? RECIBO_TIPO_TEXTO[pagamento.tipo] : "",
     recibo_valor: formatarReais(valor),
     recibo_valor_extenso: valorPorExtenso(valor),
     total_pago: formatarReais(pago),

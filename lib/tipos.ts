@@ -25,6 +25,8 @@ export interface ItemOrcamento {
   quantidade: number;
   valorUnitario: number;
   tipo?: TipoItem;
+  /** Serviço do catálogo de onde o item veio; é o que permite a `[ref]` recalcular. */
+  servicoId?: string;
 }
 
 /**
@@ -49,7 +51,8 @@ export interface ServicoContrato {
   prazoEntrega: string;
 }
 
-export type TipoPagamento = "sinal" | "restante" | "integral";
+/** `outro`: pós-venda (remarcação, reedição…). Não gera recibo — o modelo só tem texto para os três primeiros. */
+export type TipoPagamento = "sinal" | "restante" | "integral" | "outro";
 
 export interface Pagamento {
   id: string;
@@ -58,7 +61,12 @@ export interface Pagamento {
   /** YYYY-MM-DD */
   data: string;
   forma: string;
+  /** Texto livre, usado sobretudo em `outro`. */
+  descricao?: string;
 }
+
+/** De onde o orçamento veio. Ausente = manual (orçamentos anteriores à agenda). */
+export type OrigemOrcamento = "manual" | "gerador" | "colado-ej" | "colado-orc";
 
 export interface Orcamento {
   id: string;
@@ -82,14 +90,102 @@ export interface Orcamento {
   status: StatusOrcamento;
   servicoContrato?: ServicoContrato;
   pagamentos?: Pagamento[];
+  /**
+   * Código que vai na linha `[ref …]` da mensagem: `ORC-0012` (gerado aqui) ou
+   * `EJ-XXXXX` (colado do site do EJ Fotografia).
+   */
+  codigoRef?: string;
+  /** % do sinal combinado neste orçamento; ausente = o da empresa (`config.sinalPercentual`). */
+  sinalPercentual?: number;
+  origem?: OrigemOrcamento;
 }
+
+export type UnidadeServico = "un" | "hora" | "foto" | "dia" | "km";
 
 export interface Servico {
   id: string;
   categoria: string;
   nome: string;
   descricao: string;
+  /** Preço por unidade. */
   valor: number;
+  /** Código curto, único na empresa, que identifica o serviço na `[ref]` (o uuid deixaria a linha enorme). */
+  codigo?: string;
+  unidade?: UnidadeServico;
+  /**
+   * Desconto por volume: a partir de `volumeMin` unidades, TODAS as unidades
+   * passam a custar `precoVolume`.
+   */
+  precoVolume?: number;
+  volumeMin?: number;
+  /** Prazo de entrega em texto ("Em até 7 dias"). */
+  prazo?: string;
+  /** false = some do gerador, mas continua lendo orçamentos antigos. Ausente = ativo. */
+  ativo?: boolean;
+}
+
+/** Faixa de deslocamento cobrada à parte (id curto vai na `[ref]` como `ds=`). */
+export interface FaixaDeslocamento {
+  id: string;
+  nome: string;
+  valor: number;
+}
+
+/** Etapa da agenda. "cancelado" é reservado e fica fora desta lista. */
+export interface EtapaAgenda {
+  id: string;
+  nome: string;
+  descricao?: string;
+}
+
+export interface ConfigEmpresa {
+  /** % do sinal, arredondado para cima em reais inteiros. Padrão 40. */
+  sinalPercentual: number;
+  /** Validade padrão de orçamentos novos, em dias. */
+  validadeDias: number;
+  deslocamentos: FaixaDeslocamento[];
+  /** Em ordem; a última é a de "concluído" (aba Entregues). */
+  etapasAgenda: EtapaAgenda[];
+  /** Endereço do site do EJ Fotografia, para recalcular `[ref EJ-…]`. Vazio = sem integração. */
+  urlTabelaEj?: string;
+  /** Sobe quando um preço do catálogo muda; vai na `[ref]` como `v<n>` para avisar tabela antiga. */
+  versaoCatalogo: number;
+  /** Código curto da empresa, que vai na `[ref]` como `e=`. */
+  codigo: string;
+}
+
+export const ETAPA_CANCELADO = "cancelado";
+
+/** Cobrança de pós-venda (remarcação, reedição…), somada ao total do agendamento. */
+export interface ExtraAgendamento {
+  id: string;
+  descricao: string;
+  valor: number;
+}
+
+/**
+ * Agendamento de um orçamento aprovado. Os pagamentos ficam no próprio
+ * orçamento (`Orcamento.pagamentos`), e data, horário e local em
+ * `Orcamento.servicoContrato` — aqui só o que é da agenda.
+ */
+export interface Agendamento {
+  id: string;
+  /** ISO 8601 */
+  criadoEm: string;
+  atualizadoEm: string;
+  orcamentoId: string;
+  clienteId: string;
+  moeda: CodigoMoeda;
+  /** Id de uma `config.etapasAgenda` ou `ETAPA_CANCELADO`. */
+  etapa: string;
+  historico: { etapa: string; em: string }[];
+  extras: ExtraAgendamento[];
+  /** Anotações do prestador, que o cliente nunca vê. */
+  notas: string;
+  /** Valor fechado na conversa; null = vale o total do orçamento. */
+  valorCombinado: number | null;
+  /** % do sinal gravado na criação: mudar a configuração depois não muda o combinado. */
+  sinalPercentual: number;
 }
 
 /**
@@ -124,6 +220,8 @@ export interface Empresa {
   orcamentos: Orcamento[];
   servicos: Servico[];
   prestador?: Prestador;
+  config: ConfigEmpresa;
+  agendamentos: Agendamento[];
   /** Contador monotônico de `Orcamento.numero`. Nunca reaproveita número de excluído. */
   proximoNumero: number;
 }
