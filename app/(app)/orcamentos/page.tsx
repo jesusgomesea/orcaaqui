@@ -13,7 +13,10 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
-import { gerarOrcamentoHtml, gerarTextoWhatsapp } from "@/lib/orcamento";
+import { MontadorOrcamento } from "@/components/gerador/MontadorOrcamento";
+import { calculoDoOrcamento, gerarMensagemOrcamento, linkWhatsApp, refDaSelecao, selecaoDoOrcamento } from "@/lib/gerador";
+import { percentualSinal } from "@/lib/agenda";
+import { gerarOrcamentoHtml, gerarTextoWhatsapp, servicoContratoVazio } from "@/lib/orcamento";
 import {
   uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
   formatarNumeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
@@ -21,13 +24,6 @@ import {
 import type {
   Cliente, CodigoMoeda, DescontoTipo, Empresa, ItemOrcamento, Orcamento, Servico, ServicoContrato, StatusOrcamento,
 } from "@/lib/tipos";
-
-function servicoContratoVazio(): ServicoContrato {
-  return {
-    servico: "", pacote: "", dataServico: "", horarioInicio: "", horarioFim: "", local: "",
-    tempoCampo: "", fotosEditadas: "", personalizado: false, personalizadoHoras: 0, personalizadoFotos: 0, prazoEntrega: "",
-  };
-}
 
 /** Campos do serviço usados no contrato. Só aparece com contratos habilitados na empresa. */
 function DadosServicoFieldset({ valor, onChange }: { valor: ServicoContrato; onChange: (v: ServicoContrato) => void }) {
@@ -82,7 +78,7 @@ function novoOrcamentoPadrao(empresaAtiva: Empresa): Omit<Orcamento, "id" | "cri
   return {
     clienteId: "",
     data: todayStr(),
-    validadeDias: 15,
+    validadeDias: empresaAtiva.config.validadeDias,
     moeda: empresaAtiva.moeda || "BRL",
     itens: [{ id: uuid(), descricao: "", quantidade: 1, valorUnitario: 0 }],
     desconto: 0,
@@ -291,6 +287,8 @@ export default function OrcamentosPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCliente, setModalCliente] = useState<{ onSaved: (novo: Cliente) => void } | null>(null);
   const [documentosId, setDocumentosId] = useState<string | null>(null);
+  /** Montador aberto: `null` fechado, `"novo"` ou o orçamento sendo reeditado. */
+  const [montador, setMontador] = useState<Orcamento | "novo" | null>(null);
   const contratosHabilitados = !!empresaAtiva.prestador?.habilitado;
   // Lido do store a cada render: pagamentos registrados no diálogo aparecem na hora.
   const orcamentoDocumentos = documentosId ? empresaAtiva.orcamentos.find((o) => o.id === documentosId) : undefined;
@@ -300,7 +298,14 @@ export default function OrcamentosPage() {
   const list = [...empresaAtiva.orcamentos].sort((a, b) => (a.data < b.data ? 1 : -1));
 
   const openNovo = () => { setModalOrcamento({ ...novoOrcamentoPadrao(empresaAtiva), _isEdit: false }); setModalOpen(true); };
-  const openEditar = (o: Orcamento) => { setModalOrcamento({ ...o, _isEdit: true }); setModalOpen(true); };
+  // Orçamento do gerador reabre no montador (se ainda for só de itens do catálogo); o resto, no formulário livre.
+  const abreNoMontador = (o: Orcamento) =>
+    o.origem === "gerador" && (o.codigoRef?.startsWith("EJ-") ? !!empresaAtiva.config.urlTabelaEj : !!selecaoDoOrcamento(o));
+  const openEditar = (o: Orcamento) => {
+    if (abreNoMontador(o)) { setMontador(o); return; }
+    setModalOrcamento({ ...o, _isEdit: true });
+    setModalOpen(true);
+  };
 
   const handleSave = (dados: OrcamentoForm) => {
     const { _isEdit, id, ...campos } = dados;
@@ -333,17 +338,43 @@ export default function OrcamentosPage() {
 
   const handleWhatsapp = (o: Orcamento) => {
     const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
-    const texto = gerarTextoWhatsapp(o, cliente, formatarNumeroOrcamento(o.numero), empresaAtiva);
-    const numero = (cliente?.telefone || "").replace(/\D/g, "");
-    const url = `https://wa.me/${numero ? (numero.length <= 11 ? "55" + numero : numero) : ""}?text=${encodeURIComponent(texto)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const numero = formatarNumeroOrcamento(o.numero);
+    const sel = o.origem === "gerador" && !o.codigoRef?.startsWith("EJ-") ? selecaoDoOrcamento(o) : null;
+    let texto: string;
+    if (sel) {
+      // Orçamento do gerador: mesma mensagem, com a [ref ORC-…], e os preços gravados nele.
+      const sc = o.servicoContrato;
+      const calc = calculoDoOrcamento(o, empresaAtiva.servicos, percentualSinal(o, empresaAtiva));
+      texto = gerarMensagemOrcamento(calc, {
+        codigo: numero,
+        empresaNome: empresaAtiva.nome,
+        moeda: o.moeda || empresaAtiva.moeda,
+        cliente: { nome: cliente?.nome ?? "", telefone: cliente?.telefone ?? "" },
+        data: sc?.dataServico ?? "",
+        horario: sc?.horarioInicio ?? "",
+        local: sc?.local ?? "",
+        observacoes: o.observacoes,
+        emitidoEm: o.data,
+        validadeDias: o.validadeDias,
+        ref: refDaSelecao(sel, { codigo: numero, data: sc?.dataServico ?? "", horario: sc?.horarioInicio ?? "" }, empresaAtiva),
+      });
+    } else {
+      texto = gerarTextoWhatsapp(o, cliente, numero, empresaAtiva);
+    }
+    window.open(linkWhatsApp(cliente?.telefone ?? "", texto), "_blank", "noopener,noreferrer");
+    // Enviar ao cliente tira do rascunho.
+    if (o.status === "rascunho") {
+      updateOrcamento(o.id, { status: "enviado" });
+      toast.success(`${numero} marcado como enviado.`);
+    }
   };
 
   return (
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Orçamentos</h1>
       <div className="mb-4 flex gap-2.5">
-        <Button onClick={openNovo}>+ Novo orçamento</Button>
+        <Button onClick={() => setMontador("novo")}>Montar orçamento</Button>
+        <Button variant="secondary" onClick={openNovo}>+ Orçamento livre</Button>
       </div>
       <Card>
         {list.length === 0 ? (
@@ -359,7 +390,10 @@ export default function OrcamentosPage() {
                   const status = statusEfetivo(o);
                   return (
                     <Tr key={o.id}>
-                      <Td className="font-semibold">{formatarNumeroOrcamento(o.numero)}</Td>
+                      <Td className="font-semibold">
+                        {formatarNumeroOrcamento(o.numero)}
+                        {o.codigoRef?.startsWith("EJ-") && <div className="text-[11px] font-normal text-text-muted">{o.codigoRef}</div>}
+                      </Td>
                       <Td>{clienteNome(o.clienteId)}</Td>
                       <Td>{formatDateBR(o.data)}</Td>
                       <Td>{formatDateBR(validoAte)}</Td>
@@ -393,6 +427,18 @@ export default function OrcamentosPage() {
           </TableWrap>
         )}
       </Card>
+
+      <Dialog open={!!montador} onOpenChange={(aberto) => !aberto && setMontador(null)}>
+        <DialogContent className="max-w-[980px]">
+          {montador && (
+            <MontadorOrcamento
+              key={montador === "novo" ? "novo" : montador.id}
+              existente={montador === "novo" ? undefined : montador}
+              onFechar={() => setMontador(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-[720px]">

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Upload, Trash2, Download, UploadCloud, Plus, Building2, KeyRound } from "lucide-react";
 import { updateUser } from "@netlify/identity";
 import { useStore } from "@/lib/store";
+import { ConfigOrcamentoAgenda } from "@/components/empresa/ConfigOrcamentoAgenda";
 import { useSessao } from "@/components/auth/ProvedorSessao";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -357,6 +358,8 @@ export default function ConfigPage() {
           </div>
         </fieldset>
       </Card>
+
+      <ConfigOrcamentoAgenda />
 
       <PrestadorSection />
 

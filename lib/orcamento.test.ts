@@ -139,3 +139,14 @@ describe("gerarOrcamentoHtml", () => {
     expect(html).toContain("Válido até 16/11/2026");
   });
 });
+
+describe("cliente por telefone", async () => {
+  const { acharClientePorTelefone, telefoneComparavel } = await import("./orcamento");
+  test("mesmo número escrito de jeitos diferentes", () => {
+    expect(telefoneComparavel("+55 (86) 98888-7777")).toBe("86988887777");
+    expect(acharClientePorTelefone([cliente], "(86) 98888-7777")?.id).toBe("c1");
+    expect(acharClientePorTelefone([cliente], "5586988887777")?.id).toBe("c1");
+    expect(acharClientePorTelefone([cliente], "86 97777-0000")).toBeUndefined();
+    expect(acharClientePorTelefone([{ ...cliente, telefone: "" }], "")).toBeUndefined();
+  });
+});

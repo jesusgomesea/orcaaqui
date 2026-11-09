@@ -18,6 +18,7 @@ import { NOVIDADES } from "./changelog";
 import { codigoServicoLivre, defaultState, mergeEmpresa, mudouPreco, normalizar, subirVersaoCatalogo } from "./estado";
 import type {
   Cliente,
+  ConfigEmpresa,
   Empresa,
   EstadoApp,
   EstadoImportado,
@@ -83,6 +84,9 @@ interface StoreValue {
   updateServico: (id: string, patch: Partial<Servico>) => void;
   removeServico: (id: string) => void;
   marcarNovidadesVistas: () => void;
+  updateConfig: (patch: Partial<ConfigEmpresa>) => void;
+  /** Aplica o % do sinal a todas as empresas da conta (orçamentos já criados mantêm o seu). */
+  aplicarSinalATodas: (percentual: number) => void;
   /**
    * Grava agora o que estiver pendente (sem esperar o debounce). Usado antes
    * de gerar contrato/recibo, porque o servidor lê os dados já gravados.
@@ -340,6 +344,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patchEmpresaAtiva]
   );
 
+  const updateConfig = useCallback(
+    (patch: Partial<ConfigEmpresa>) => patchEmpresaAtiva((e) => ({ ...e, config: { ...e.config, ...patch } })),
+    [patchEmpresaAtiva]
+  );
+  const aplicarSinalATodas = useCallback((percentual: number) => {
+    setState((s) =>
+      s ? { ...s, empresas: s.empresas.map((e) => ({ ...e, config: { ...e.config, sinalPercentual: percentual } })) } : s
+    );
+  }, []);
+
   const marcarNovidadesVistas = useCallback(() => {
     setState((s) => (s ? { ...s, novidadesVistoId: NOVIDADES[0]?.id || null } : s));
   }, []);
@@ -371,6 +385,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             removeServico,
             marcarNovidadesVistas,
             garantirSalvo,
+            updateConfig,
+            aplicarSinalATodas,
           }
         : null,
     [
@@ -378,7 +394,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCliente, addClientes, updateCliente, removeCliente,
       addOrcamento, updateOrcamento, removeOrcamento,
       addServico, updateServico, removeServico,
-      marcarNovidadesVistas, garantirSalvo,
+      marcarNovidadesVistas, garantirSalvo, updateConfig, aplicarSinalATodas,
     ]
   );
 

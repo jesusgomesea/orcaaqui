@@ -3,7 +3,27 @@
 // reaproveitadas pelo gerador e pela agenda.
 
 import { addDaysStr, calcOrcamentoTotais, escapeHtml, formatDateBR, formatMoney, logoSegura, todayStr } from "./helpers";
-import type { Cliente, Empresa, Orcamento } from "./tipos";
+import type { Cliente, Empresa, Orcamento, ServicoContrato } from "./tipos";
+
+export function servicoContratoVazio(): ServicoContrato {
+  return {
+    servico: "", pacote: "", dataServico: "", horarioInicio: "", horarioFim: "", local: "",
+    tempoCampo: "", fotosEditadas: "", personalizado: false, personalizadoHoras: 0, personalizadoFotos: 0, prazoEntrega: "",
+  };
+}
+
+/** Telefone só com dígitos, sem o 55 do Brasil — para achar o mesmo cliente escrito de jeitos diferentes. */
+export function telefoneComparavel(tel: string): string {
+  const d = tel.replace(/\D/g, "");
+  return (d.length === 12 || d.length === 13) && d.startsWith("55") ? d.slice(2) : d;
+}
+
+/** Cliente com o mesmo telefone (dedupe ao criar pelo gerador ou ao colar). */
+export function acharClientePorTelefone(clientes: Cliente[], telefone: string): Cliente | undefined {
+  const alvo = telefoneComparavel(telefone);
+  if (alvo.length < 8) return undefined;
+  return clientes.find((c) => telefoneComparavel(c.telefone) === alvo);
+}
 
 /**
  * Monta o HTML do documento impresso. Estilos inline de propósito: esse HTML
