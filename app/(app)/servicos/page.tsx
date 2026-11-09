@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,11 +150,36 @@ export default function ServicosPage() {
       <div className="mb-4 flex gap-2.5">
         <Button onClick={openNovo}>+ Novo serviço</Button>
       </div>
-      <Card>
+      <Card className="p-0 md:p-5">
         {list.length === 0 ? (
           <EmptyState message="Nenhum serviço cadastrado ainda." />
         ) : (
-          <TableWrap>
+          <>
+          <ul className="divide-y divide-border md:hidden">
+            {list.map((s) => (
+              <li key={s.id} className="flex items-center gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-semibold text-text">
+                    {s.nome} {s.ativo === false && <Badge>Inativo</Badge>}
+                  </div>
+                  <div className="text-[12px] text-text-muted">
+                    {formatMoney(s.valor, empresaAtiva.moeda)} / {nomeUnidade(s.unidade)}
+                    {s.precoVolume !== undefined && s.volumeMin !== undefined && ` · ${formatMoney(s.precoVolume, empresaAtiva.moeda)} a partir de ${s.volumeMin}`}
+                  </div>
+                  {(s.categoria || s.prazo) && (
+                    <div className="truncate text-[11.5px] text-text-muted">{[s.categoria, s.prazo].filter(Boolean).join(" · ")}</div>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <Button variant="secondary" size="sm" onClick={() => openEditar(s)}>Editar</Button>
+                  <Button variant="danger" size="sm" onClick={() => handleExcluir(s)} aria-label={`Excluir ${s.nome}`}>
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <TableWrap className="hidden md:block">
             <Table>
               <Thead><tr><Th>Categoria</Th><Th>Nome</Th><Th>Valor</Th><Th>Prazo</Th><Th></Th></tr></Thead>
               <tbody>
@@ -184,6 +210,7 @@ export default function ServicosPage() {
               </tbody>
             </Table>
           </TableWrap>
+          </>
         )}
       </Card>
 

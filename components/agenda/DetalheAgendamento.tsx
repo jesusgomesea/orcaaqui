@@ -186,7 +186,7 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
           </ul>
           <div className="mt-2 flex gap-2">
             <Input placeholder="Ex: Remarcação" value={extraDesc} onChange={(e) => setExtraDesc(e.target.value)} />
-            <Input className="w-28" type="number" min="0" step="0.01" value={extraValor || ""} placeholder="0" onChange={(e) => setExtraValor(Number(e.target.value) || 0)} />
+            <Input className="w-20 shrink-0 sm:w-28" type="number" min="0" step="0.01" value={extraValor || ""} placeholder="0" onChange={(e) => setExtraValor(Number(e.target.value) || 0)} />
             <Button
               type="button"
               variant="secondary"

@@ -126,7 +126,7 @@ export function ConfigOrcamentoAgenda() {
                   onChange={(e) => setDesl(c.deslocamentos.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)))}
                 />
                 <Input
-                  className="w-32"
+                  className="w-24 shrink-0 sm:w-32"
                   type="number"
                   min="0"
                   step="0.01"

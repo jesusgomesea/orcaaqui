@@ -39,13 +39,13 @@ function faturamentoPorMes(orcamentos: Orcamento[], meses = 6) {
 
 function Kpi({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
   return (
-    <Card className="flex items-center gap-3.5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary">
+    <Card className="flex items-center gap-3.5 p-3.5 sm:p-5">
+      <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary sm:flex">
         <Icon className="h-5 w-5" strokeWidth={1.8} />
       </div>
-      <div>
-        <div className="text-[12px] font-medium text-text-muted">{label}</div>
-        <div className="text-[19px] font-bold text-text">{value}</div>
+      <div className="min-w-0">
+        <div className="text-[11.5px] leading-tight font-medium text-text-muted sm:text-[12px]">{label}</div>
+        <div className="truncate text-[16px] font-bold text-text sm:text-[19px]">{value}</div>
       </div>
     </Card>
   );
@@ -83,7 +83,7 @@ export default function PainelPage() {
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Painel</h1>
 
-      <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3.5 lg:grid-cols-3">
         <Kpi icon={TrendingUp} label="Orçado este mês" value={formatMoney(orcadoNoMes, moeda)} />
         <Kpi icon={FileText} label="Orçamentos ativos" value={pendentes.length} />
         <Kpi icon={CheckCircle2} label="Taxa de aprovação" value={`${taxaAprovacao}%`} />
@@ -100,7 +100,23 @@ export default function PainelPage() {
         {agenda.proximos.length === 0 ? (
           <EmptyState message="Nenhum serviço agendado para os próximos 30 dias." />
         ) : (
-          <TableWrap>
+          <>
+          <ul className="-mx-1 divide-y divide-border md:hidden">
+            {agenda.proximos.slice(0, 6).map((i) => (
+              <li key={i.agendamento.id} className="flex items-center justify-between gap-3 px-1 py-2.5">
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold text-text">{i.clienteNome}</div>
+                  <div className="truncate text-[12px] text-text-muted">
+                    {formatDateBR(i.data)}{i.horario ? ` ${i.horario}` : ""} · {nomeEtapa(i.agendamento.etapa, empresaAtiva.config.etapasAgenda)}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right text-[12px] text-text-muted">
+                  falta<div className="text-[13px] font-semibold text-text">{formatMoney(valorRestante(i.agendamento, i.orcamento), i.agendamento.moeda)}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <TableWrap className="hidden md:block">
             <Table>
               <Thead><tr><Th>Data</Th><Th>Cliente</Th><Th>Local</Th><Th>Etapa</Th><Th>Falta receber</Th></tr></Thead>
               <tbody>
@@ -116,6 +132,7 @@ export default function PainelPage() {
               </tbody>
             </Table>
           </TableWrap>
+          </>
         )}
       </Card>
 
@@ -124,7 +141,7 @@ export default function PainelPage() {
         {!temDadosGrafico ? (
           <EmptyState message="Ainda não há orçamentos suficientes pra mostrar um gráfico." />
         ) : (
-          <div className="h-64 w-full">
+          <div className="h-52 w-full sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dadosGrafico} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -148,7 +165,23 @@ export default function PainelPage() {
         {venceLogo.length === 0 ? (
           <EmptyState message="Nenhum orçamento enviado aguardando resposta." />
         ) : (
-          <TableWrap>
+          <>
+          <ul className="-mx-1 divide-y divide-border md:hidden">
+            {venceLogo.map((o) => {
+              const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
+              const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
+              return (
+                <li key={o.id} className="flex items-center justify-between gap-3 px-1 py-2.5">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-semibold text-text">{formatarNumeroOrcamento(o.numero)} · {cliente?.nome || "-"}</div>
+                    <div className="text-[12px] text-text-muted">vence {formatDateBR(o.validoAte)}</div>
+                  </div>
+                  <div className="shrink-0 text-[13px] font-semibold text-text">{formatMoney(total, o.moeda || moeda)}</div>
+                </li>
+              );
+            })}
+          </ul>
+          <TableWrap className="hidden md:block">
             <Table>
               <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th></tr></Thead>
               <tbody>
@@ -168,6 +201,7 @@ export default function PainelPage() {
               </tbody>
             </Table>
           </TableWrap>
+          </>
         )}
       </Card>
     </div>

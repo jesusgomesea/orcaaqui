@@ -6,6 +6,7 @@ import { Plus, Trash2, MessageCircle, Printer, Copy, FileSignature, CalendarChec
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,9 +177,9 @@ function OrcamentoForm({
         <div className="space-y-3">
           {f.itens.map((it) => (
             <div key={it.id} className="rounded-lg border border-border p-2.5">
-              <div className="flex items-start gap-2">
+              <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap sm:items-start">
                 {servicos.length > 0 && (
-                  <div className="w-40 shrink-0">
+                  <div className="w-full sm:w-40 sm:shrink-0">
                     <Select
                       key={pickerNonce[it.id] || 0}
                       value={undefined}
@@ -198,15 +199,21 @@ function OrcamentoForm({
                     </Select>
                   </div>
                 )}
-                <div className="w-16"><Input type="number" min="0" step="1" title="Quantidade" value={it.quantidade} onChange={(e) => setItem(it.id, { quantidade: Number(e.target.value) || 0 })} /></div>
-                <div className="w-28"><Input type="number" min="0" step="0.01" title="Valor unitário" value={it.valorUnitario} onChange={(e) => setItem(it.id, { valorUnitario: Number(e.target.value) || 0 })} /></div>
+                <div className="w-16">
+                  <span className="mb-0.5 block text-[11px] text-text-muted sm:hidden">Qtd</span>
+                  <Input type="number" min="0" step="1" title="Quantidade" aria-label="Quantidade" value={it.quantidade} onChange={(e) => setItem(it.id, { quantidade: Number(e.target.value) || 0 })} />
+                </div>
+                <div className="w-28">
+                  <span className="mb-0.5 block text-[11px] text-text-muted sm:hidden">Valor unit.</span>
+                  <Input type="number" min="0" step="0.01" title="Valor unitário" aria-label="Valor unitário" value={it.valorUnitario} onChange={(e) => setItem(it.id, { valorUnitario: Number(e.target.value) || 0 })} />
+                </div>
                 {contratos && (
                   <label className="flex h-9 shrink-0 cursor-pointer items-center gap-1 text-[12px] text-text-muted" title="Aparece na lista de adicionais do contrato">
                     <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={it.tipo === "adicional"} onChange={(e) => setItem(it.id, { tipo: e.target.checked ? "adicional" : undefined })} />
                     Adicional
                   </label>
                 )}
-                <div className="flex h-9 flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), f.moeda)}</div>
+                <div className="flex h-9 min-w-[5.5rem] flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), f.moeda)}</div>
                 <button type="button" onClick={() => removeItem(it.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger-tint hover:text-danger cursor-pointer">
                   <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                 </button>
@@ -225,21 +232,21 @@ function OrcamentoForm({
           <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Adicionar item
         </button>
 
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-4 border-t border-border pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-border pt-3">
           <div className="flex items-center gap-2">
             <Label className="mb-0">Desconto</Label>
             <Select value={f.descontoTipo} onValueChange={(v) => set({ descontoTipo: v as DescontoTipo })}>
-              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-20 sm:w-24"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="valor">Valor</SelectItem>
                 <SelectItem value="percentual">%</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="number" min="0" step="0.01" className="w-24" value={f.desconto} onChange={(e) => set({ desconto: Number(e.target.value) || 0 })} />
+            <Input type="number" min="0" step="0.01" className="w-20 sm:w-24" value={f.desconto} onChange={(e) => set({ desconto: Number(e.target.value) || 0 })} />
           </div>
           <div className="flex items-center gap-2">
             <Label className="mb-0">Acréscimo</Label>
-            <Input type="number" min="0" step="0.01" className="w-24" value={f.acrescimo} onChange={(e) => set({ acrescimo: Number(e.target.value) || 0 })} />
+            <Input type="number" min="0" step="0.01" className="w-20 sm:w-24" value={f.acrescimo} onChange={(e) => set({ acrescimo: Number(e.target.value) || 0 })} />
           </div>
         </div>
         <div className="mt-2 flex justify-end text-[13px] text-text-muted">Subtotal: {formatMoney(subtotal, f.moeda)}</div>
@@ -384,73 +391,109 @@ export default function OrcamentosPage() {
     }
   };
 
+  /** Ações de um orçamento — as mesmas no cartão (celular) e na linha da tabela (desktop). */
+  const acoes = (o: Orcamento, status: ReturnType<typeof statusEfetivo>, tabela = false) => (
+    <div className={cn("flex gap-1.5", tabela ? "flex-nowrap justify-end" : "flex-wrap")}>
+      <Button variant="secondary" size="sm" onClick={() => openEditar(o)}>Editar</Button>
+      <Button variant="secondary" size="sm" onClick={() => handlePdf(o)} title="Gerar PDF/imprimir" aria-label="Gerar PDF ou imprimir">
+        <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </Button>
+      <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp">
+        <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </Button>
+      {agendado(o) ? (
+        <Link href="/agenda" title="Ver na agenda" aria-label="Ver na agenda" className="inline-flex h-7 items-center rounded-md border border-border-strong bg-surface px-2.5 text-text hover:bg-bg">
+          <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.8} />
+        </Link>
+      ) : (
+        status !== "recusado" && (
+          <Button variant="secondary" size="sm" onClick={() => handleAgendar(o)} title="Cliente aprovou → agendar" aria-label="Cliente aprovou, agendar">
+            <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+          </Button>
+        )
+      )}
+      {contratosHabilitados && (
+        <Button variant="secondary" size="sm" onClick={() => setDocumentosId(o.id)} title="Contrato e recibos" aria-label="Contrato e recibos">
+          <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
+        </Button>
+      )}
+      <Button variant="secondary" size="sm" onClick={() => handleDuplicar(o)} title="Duplicar" aria-label="Duplicar">
+        <Copy className="h-3.5 w-3.5" strokeWidth={1.8} />
+      </Button>
+      <Button variant="danger" size="sm" onClick={() => handleExcluir(o)} aria-label="Excluir" title="Excluir">
+        {tabela ? "Excluir" : <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />}
+      </Button>
+    </div>
+  );
+
   return (
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Orçamentos</h1>
-      <div className="mb-4 flex gap-2.5">
+      <div className="mb-4 flex flex-wrap gap-2.5">
         <Button onClick={() => setMontador("novo")}>Montar orçamento</Button>
         <Button variant="secondary" onClick={openNovo}>+ Orçamento livre</Button>
       </div>
-      <Card>
+      <Card className="p-0 xl:p-5">
         {list.length === 0 ? (
           <EmptyState message="Nenhum orçamento cadastrado ainda." />
         ) : (
-          <TableWrap>
-            <Table>
-              <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Emissão</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th><Th></Th></tr></Thead>
-              <tbody>
-                {list.map((o) => {
-                  const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
-                  const validoAte = addDaysStr(o.data, o.validadeDias);
-                  const status = statusEfetivo(o);
-                  return (
-                    <Tr key={o.id}>
-                      <Td className="font-semibold">
-                        {formatarNumeroOrcamento(o.numero)}
-                        {o.codigoRef?.startsWith("EJ-") && <div className="text-[11px] font-normal text-text-muted">{o.codigoRef}</div>}
-                      </Td>
-                      <Td>{clienteNome(o.clienteId)}</Td>
-                      <Td>{formatDateBR(o.data)}</Td>
-                      <Td>{formatDateBR(validoAte)}</Td>
-                      <Td>{formatMoney(total, o.moeda || empresaAtiva.moeda)}</Td>
-                      <Td><Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge></Td>
-                      <Td className="whitespace-nowrap">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <Button variant="secondary" size="sm" onClick={() => openEditar(o)}>Editar</Button>
-                          <Button variant="secondary" size="sm" onClick={() => handlePdf(o)} title="Gerar PDF/imprimir">
-                            <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />
-                          </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp">
-                            <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
-                          </Button>
-                          {agendado(o) ? (
-                            <Link href="/agenda" title="Ver na agenda" className="inline-flex h-7 items-center rounded-md border border-border-strong bg-surface px-2.5 text-text hover:bg-bg">
-                              <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.8} />
-                            </Link>
-                          ) : (
-                            status !== "recusado" && (
-                              <Button variant="secondary" size="sm" onClick={() => handleAgendar(o)} title="Cliente aprovou → agendar">
-                                <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-                              </Button>
-                            )
-                          )}
-                          {contratosHabilitados && (
-                            <Button variant="secondary" size="sm" onClick={() => setDocumentosId(o.id)} title="Contrato e recibos">
-                              <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
-                            </Button>
-                          )}
-                          <Button variant="secondary" size="sm" onClick={() => handleDuplicar(o)} title="Duplicar">
-                            <Copy className="h-3.5 w-3.5" strokeWidth={1.8} />
-                          </Button>
-                          <Button variant="danger" size="sm" onClick={() => handleExcluir(o)}>Excluir</Button>
+          <>
+            {/* Até 1280px: cartões (a tabela com 7 colunas e 8 ações não cabe e empilhava os botões). */}
+            <ul className="divide-y divide-border xl:hidden">
+              {list.map((o) => {
+                const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
+                const status = statusEfetivo(o);
+                return (
+                  <li key={o.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[13.5px] font-semibold text-text">
+                          {formatarNumeroOrcamento(o.numero)}
+                          {o.codigoRef?.startsWith("EJ-") && <span className="ml-1.5 text-[11.5px] font-normal text-text-muted">{o.codigoRef}</span>}
                         </div>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </TableWrap>
+                        <div className="truncate text-[13px] text-text">{clienteNome(o.clienteId)}</div>
+                      </div>
+                      <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
+                    </div>
+                    <div className="mt-1 flex items-end justify-between gap-2">
+                      <div className="text-[12px] text-text-muted">
+                        {formatDateBR(o.data)} · válido até {formatDateBR(addDaysStr(o.data, o.validadeDias))}
+                      </div>
+                      <div className="shrink-0 text-[15px] font-bold text-text">{formatMoney(total, o.moeda || empresaAtiva.moeda)}</div>
+                    </div>
+                    <div className="mt-3">{acoes(o, status)}</div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <TableWrap className="hidden xl:block">
+              <Table>
+                <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Emissão</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th><Th></Th></tr></Thead>
+                <tbody>
+                  {list.map((o) => {
+                    const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
+                    const validoAte = addDaysStr(o.data, o.validadeDias);
+                    const status = statusEfetivo(o);
+                    return (
+                      <Tr key={o.id}>
+                        <Td className="font-semibold whitespace-nowrap">
+                          {formatarNumeroOrcamento(o.numero)}
+                          {o.codigoRef?.startsWith("EJ-") && <div className="text-[11px] font-normal text-text-muted">{o.codigoRef}</div>}
+                        </Td>
+                        <Td>{clienteNome(o.clienteId)}</Td>
+                        <Td className="whitespace-nowrap">{formatDateBR(o.data)}</Td>
+                        <Td className="whitespace-nowrap">{formatDateBR(validoAte)}</Td>
+                        <Td className="whitespace-nowrap">{formatMoney(total, o.moeda || empresaAtiva.moeda)}</Td>
+                        <Td><Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge></Td>
+                        <Td>{acoes(o, status, true)}</Td>
+                      </Tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </TableWrap>
+          </>
         )}
       </Card>
 
