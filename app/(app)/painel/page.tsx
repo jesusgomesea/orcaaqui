@@ -1,6 +1,8 @@
 "use client";
 
-import { FileText, TrendingUp, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
+import { FileText, TrendingUp, Clock, CheckCircle2, Wallet, CalendarClock, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { nomeEtapa, resumoAgenda, valorRestante } from "@/lib/agenda";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
@@ -73,6 +75,7 @@ export default function PainelPage() {
     .sort((a, b) => (a.validoAte < b.validoAte ? -1 : 1))
     .slice(0, 6);
 
+  const agenda = resumoAgenda(empresaAtiva, hoje);
   const dadosGrafico = faturamentoPorMes(empresaAtiva.orcamentos);
   const temDadosGrafico = dadosGrafico.some((b) => b.orcado > 0);
 
@@ -80,12 +83,41 @@ export default function PainelPage() {
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Painel</h1>
 
-      <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi icon={TrendingUp} label="Orçado este mês" value={formatMoney(orcadoNoMes, moeda)} />
         <Kpi icon={FileText} label="Orçamentos ativos" value={pendentes.length} />
         <Kpi icon={CheckCircle2} label="Taxa de aprovação" value={`${taxaAprovacao}%`} />
         <Kpi icon={Clock} label="Total de orçamentos" value={empresaAtiva.orcamentos.length} />
+        <Kpi icon={Wallet} label="A receber (agenda)" value={formatMoney(agenda.aReceber, moeda)} />
+        <Kpi icon={CalendarClock} label="Serviços nos próximos 30 dias" value={agenda.proximos30} />
       </div>
+
+      <Card className="mb-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-[15px] font-bold text-text">Próximos serviços</h2>
+          <Link href="/agenda" className="text-[12.5px] font-semibold text-primary hover:underline">Abrir agenda</Link>
+        </div>
+        {agenda.proximos.length === 0 ? (
+          <EmptyState message="Nenhum serviço agendado para os próximos 30 dias." />
+        ) : (
+          <TableWrap>
+            <Table>
+              <Thead><tr><Th>Data</Th><Th>Cliente</Th><Th>Local</Th><Th>Etapa</Th><Th>Falta receber</Th></tr></Thead>
+              <tbody>
+                {agenda.proximos.slice(0, 6).map((i) => (
+                  <Tr key={i.agendamento.id}>
+                    <Td className="font-semibold whitespace-nowrap">{formatDateBR(i.data)}{i.horario ? ` ${i.horario}` : ""}</Td>
+                    <Td>{i.clienteNome}</Td>
+                    <Td>{i.local || "-"}</Td>
+                    <Td>{nomeEtapa(i.agendamento.etapa, empresaAtiva.config.etapasAgenda)}</Td>
+                    <Td>{formatMoney(valorRestante(i.agendamento, i.orcamento), i.agendamento.moeda)}</Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Card>
 
       <Card className="mb-5">
         <h2 className="mb-3 text-[15px] font-bold text-text">Faturamento (últimos 6 meses)</h2>

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, MessageCircle, Printer, Copy, FileSignature } from "lucide-react";
+import { Plus, Trash2, MessageCircle, Printer, Copy, FileSignature, CalendarCheck, CalendarDays } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -282,7 +284,7 @@ function MiniClienteForm({ onSave, onCancel }: { onSave: (dados: Omit<Cliente, "
 }
 
 export default function OrcamentosPage() {
-  const { empresaAtiva, addOrcamento, updateOrcamento, removeOrcamento, addCliente } = useStore();
+  const { empresaAtiva, addOrcamento, updateOrcamento, removeOrcamento, addCliente, agendarOrcamento } = useStore();
   const [modalOrcamento, setModalOrcamento] = useState<OrcamentoForm | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCliente, setModalCliente] = useState<{ onSaved: (novo: Cliente) => void } | null>(null);
@@ -313,6 +315,19 @@ export default function OrcamentosPage() {
     else addOrcamento(campos);
     setModalOpen(false);
     toast.success("Orçamento salvo.");
+  };
+
+  const router = useRouter();
+  const agendado = (o: Orcamento) => empresaAtiva.agendamentos.some((a) => a.orcamentoId === o.id);
+
+  const handleAgendar = (o: Orcamento) => {
+    const numero = formatarNumeroOrcamento(o.numero);
+    if (!confirm(`O cliente aprovou o ${numero}? Ele fica como aprovado e entra na Agenda.`)) return;
+    const r = agendarOrcamento(o.id);
+    if (!r) return;
+    toast.success(`${numero} aprovado e agendado.`, {
+      action: { label: "Abrir agenda", onClick: () => router.push("/agenda") },
+    });
   };
 
   const handleDuplicar = (o: Orcamento) => {
@@ -408,6 +423,17 @@ export default function OrcamentosPage() {
                           <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp">
                             <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
                           </Button>
+                          {agendado(o) ? (
+                            <Link href="/agenda" title="Ver na agenda" className="inline-flex h-7 items-center rounded-md border border-border-strong bg-surface px-2.5 text-text hover:bg-bg">
+                              <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.8} />
+                            </Link>
+                          ) : (
+                            status !== "recusado" && (
+                              <Button variant="secondary" size="sm" onClick={() => handleAgendar(o)} title="Cliente aprovou → agendar">
+                                <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+                              </Button>
+                            )
+                          )}
                           {contratosHabilitados && (
                             <Button variant="secondary" size="sm" onClick={() => setDocumentosId(o.id)} title="Contrato e recibos">
                               <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />

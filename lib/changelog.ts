@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-04",
+    data: "2026-11-08",
+    tipo: "novidade",
+    titulo: "Agenda: do orçamento aprovado à entrega",
+    descricao:
+      "Nova tela Agenda. Quando o cliente aprovar, cole a mensagem que ele devolveu (do Montar orçamento ou do site do EJ) ou use \"Cliente aprovou → agendar\" na lista de orçamentos: o valor é recalculado pela tabela, o orçamento fica aprovado e o agendamento é criado. Acompanhe etapas (configuráveis em Empresa), pagamentos com o sinal sugerido, extras de pós-venda, valor combinado e notas. O Painel ganhou \"a receber\" e os próximos serviços.",
+  },
+  {
     id: "2026-11-08-03",
     data: "2026-11-08",
     tipo: "novidade",

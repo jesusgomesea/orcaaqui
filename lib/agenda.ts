@@ -111,3 +111,63 @@ export function compararPorData(
   if (b.data) return 1;
   return b.criadoEm.localeCompare(a.criadoEm);
 }
+
+/** Linha da agenda já cruzada com orçamento e cliente, para listar, buscar e ordenar. */
+export interface ItemAgenda {
+  agendamento: Agendamento;
+  orcamento: Orcamento | undefined;
+  clienteNome: string;
+  clienteTelefone: string;
+  data: string;
+  horario: string;
+  local: string;
+  criadoEm: string;
+  situacao: Situacao;
+}
+
+export function itensDaAgenda(empresa: Pick<Empresa, "agendamentos" | "orcamentos" | "clientes" | "config">): ItemAgenda[] {
+  return empresa.agendamentos.map((a) => {
+    const orcamento = empresa.orcamentos.find((o) => o.id === a.orcamentoId);
+    const cliente = empresa.clientes.find((c) => c.id === a.clienteId);
+    return {
+      agendamento: a,
+      orcamento,
+      clienteNome: cliente?.nome ?? "(cliente removido)",
+      clienteTelefone: cliente?.telefone ?? "",
+      ...quando(orcamento),
+      local: orcamento?.servicoContrato?.local ?? "",
+      criadoEm: a.criadoEm,
+      situacao: situacao(a, empresa.config.etapasAgenda),
+    };
+  });
+}
+
+function diasEntre(de: string, ate: string): number {
+  return Math.round((Date.parse(`${ate}T00:00:00Z`) - Date.parse(`${de}T00:00:00Z`)) / 86_400_000);
+}
+
+/**
+ * Números da agenda (Agenda e Painel). "A receber" segue o painel do EJ: só o
+ * que já passou da primeira etapa (confirmado em diante) e só na moeda da
+ * empresa — somar moedas diferentes não faz sentido.
+ */
+export function resumoAgenda(
+  empresa: Pick<Empresa, "agendamentos" | "orcamentos" | "clientes" | "config" | "moeda">,
+  hoje: string
+) {
+  const itens = itensDaAgenda(empresa);
+  const ativos = itens.filter((i) => i.situacao === "ativo");
+  const primeira = empresa.config.etapasAgenda[0]?.id;
+  const proximos = ativos
+    .filter((i) => i.data && i.data >= hoje && diasEntre(hoje, i.data) <= 30)
+    .sort(compararPorData);
+  const aReceberCentavos = ativos
+    .filter((i) => i.agendamento.etapa !== primeira && i.agendamento.moeda === empresa.moeda)
+    .reduce((s, i) => s + paraCentavos(valorRestante(i.agendamento, i.orcamento)), 0);
+  return {
+    aguardando: ativos.filter((i) => i.agendamento.etapa === primeira).length,
+    proximos30: proximos.length,
+    proximos,
+    aReceber: aReceberCentavos / 100,
+  };
+}
