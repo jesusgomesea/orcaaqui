@@ -17,7 +17,9 @@ export function conversorConfigurado(): boolean {
   return Boolean(process.env.GOTENBERG_URL);
 }
 
-const TEMPO_LIMITE_MS = 20_000;
+// Abaixo do corte da função no Netlify (~10 s), somado às etapas do Blobs: assim
+// a resposta ainda chega dizendo que a conversão demorou. Normal: 1–3 s.
+const TEMPO_LIMITE_MS = 6_000;
 
 export async function converterParaPdf(docx: Uint8Array): Promise<Uint8Array | null> {
   const base = process.env.GOTENBERG_URL?.replace(/\/+$/, "");

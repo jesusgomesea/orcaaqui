@@ -13,9 +13,10 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
+import { gerarOrcamentoHtml, gerarTextoWhatsapp } from "@/lib/orcamento";
 import {
   uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
-  numeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
+  formatarNumeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
 } from "@/lib/helpers";
 import type {
   Cliente, CodigoMoeda, DescontoTipo, Empresa, ItemOrcamento, Orcamento, Servico, ServicoContrato, StatusOrcamento,
@@ -67,9 +68,17 @@ function DadosServicoFieldset({ valor, onChange }: { valor: ServicoContrato; onC
   );
 }
 
-type OrcamentoForm = Omit<Orcamento, "id" | "criadoEm"> & { id?: string; criadoEm?: string; _isEdit: boolean };
 
-function novoOrcamentoPadrao(empresaAtiva: Empresa): Omit<Orcamento, "id" | "criadoEm"> {
+// `numero` fica de fora: quem cria ainda não tem um, e quem edita carrega o
+// que já foi gravado — o store é a única fonte que atribui número novo.
+type OrcamentoForm = Omit<Orcamento, "id" | "criadoEm" | "numero"> & {
+  id?: string;
+  criadoEm?: string;
+  numero?: number;
+  _isEdit: boolean;
+};
+
+function novoOrcamentoPadrao(empresaAtiva: Empresa): Omit<Orcamento, "id" | "criadoEm" | "numero"> {
   return {
     clienteId: "",
     data: todayStr(),
@@ -260,110 +269,6 @@ function OrcamentoForm({
   );
 }
 
-/**
- * Monta o HTML do documento impresso. Estilos inline de propósito: esse HTML
- * vira o PDF (via window.print) e precisa ser autocontido, sem depender do
- * Tailwind nem do tema da tela — por isso as cores fixas claras.
- * Ao mudar o layout do orçamento impresso, é esta função que se edita.
- */
-function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, numero: string, empresa: Empresa) {
-  const { subtotal, descontoValor, acrescimoValor, total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
-  const validoAte = addDaysStr(o.data, o.validadeDias);
-  const cor = empresa.corPrimaria || "#2563eb";
-  const moeda = o.moeda || empresa.moeda || "BRL";
-  const linhas = o.itens.filter((it) => it.descricao.trim()).map((it) => `
-    <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;">${it.descricao}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:center;">${it.quantidade}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;">${formatMoney(it.valorUnitario, moeda)}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), moeda)}</td>
-    </tr>`).join("");
-
-  return `
-    <div style="max-width:680px;margin:0 auto;font-family:-apple-system,'Segoe UI',Arial,sans-serif;color:#1a2233;padding:0 24px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:28px 0 20px;border-bottom:3px solid ${cor};">
-        <div style="display:flex;align-items:center;gap:12px;">
-          ${empresa.logoDataUrl ? `<img src="${empresa.logoDataUrl}" style="height:48px;max-width:140px;object-fit:contain;" />` : ""}
-          <div>
-            <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;">${empresa.nome || "Sua Empresa"}</div>
-            <div style="font-size:12px;color:#667085;margin-top:2px;">${[empresa.documento, empresa.telefone, empresa.email].filter(Boolean).join(" · ")}</div>
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:12px;color:#667085;letter-spacing:.04em;text-transform:uppercase;font-weight:700;">Orçamento</div>
-          <div style="font-size:20px;font-weight:800;color:${cor};">${numero}</div>
-        </div>
-      </div>
-
-      <div style="display:flex;justify-content:space-between;margin:22px 0;font-size:13px;">
-        <div>
-          <div style="color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:4px;">Cliente</div>
-          <div style="font-weight:600;">${cliente ? cliente.nome : "-"}</div>
-          <div style="color:#667085;">${cliente?.telefone || cliente?.email || ""}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:4px;">Emitido em</div>
-          <div style="font-weight:600;">${formatDateBR(o.data)}</div>
-          <div style="color:#b54708;font-weight:600;margin-top:6px;">Válido até ${formatDateBR(validoAte)}</div>
-        </div>
-      </div>
-
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px;">
-        <thead>
-          <tr style="background:#f6f5f1;">
-            <th style="text-align:left;padding:9px 0 9px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#667085;">Descrição</th>
-            <th style="text-align:center;padding:9px 0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#667085;">Qtd</th>
-            <th style="text-align:right;padding:9px 0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#667085;">Valor unit.</th>
-            <th style="text-align:right;padding:9px 10px 9px 0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#667085;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>${linhas}</tbody>
-      </table>
-
-      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-        <div style="width:260px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#667085;">
-            <span>Subtotal</span><span>${formatMoney(subtotal, moeda)}</span>
-          </div>
-          ${descontoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#b54708;"><span>Desconto</span><span>-${formatMoney(descontoValor, moeda)}</span></div>` : ""}
-          ${acrescimoValor > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:#667085;"><span>Acréscimo</span><span>+${formatMoney(acrescimoValor, moeda)}</span></div>` : ""}
-          <div style="display:flex;justify-content:space-between;font-size:19px;font-weight:800;padding:10px 0 0;border-top:2px solid #1a2233;margin-top:6px;">
-            <span>Total</span><span>${formatMoney(total, moeda)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:28px;padding:16px 18px;background:#f6f5f1;border-radius:10px;font-size:12.5px;line-height:1.6;">
-        <div style="font-weight:700;margin-bottom:4px;">Condições de pagamento</div>
-        <div style="color:#333;white-space:pre-wrap;">${o.condicoes || "-"}</div>
-        ${empresa.dadosBancarios ? `<div style="font-weight:700;margin:10px 0 4px;">Pagamento</div><div style="color:#333;white-space:pre-wrap;">${empresa.dadosBancarios}</div>` : ""}
-        ${o.observacoes ? `<div style="font-weight:700;margin:10px 0 4px;">Observações</div><div style="color:#333;white-space:pre-wrap;">${o.observacoes}</div>` : ""}
-      </div>
-
-      <div style="text-align:center;color:#98a2b3;font-size:11.5px;margin-top:26px;padding-bottom:24px;">
-        Orçamento gerado em ${formatDateBR(todayStr())}${empresa.nome ? " — " + empresa.nome : ""}
-      </div>
-    </div>
-  `;
-}
-
-function gerarTextoWhatsapp(o: Orcamento, cliente: Cliente | undefined, numero: string, empresa: Empresa) {
-  const moeda = o.moeda || empresa.moeda || "BRL";
-  const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
-  const validoAte = addDaysStr(o.data, o.validadeDias);
-  const itens = o.itens.filter((it) => it.descricao.trim())
-    .map((it) => `• ${it.descricao} (${it.quantidade}x ${formatMoney(it.valorUnitario, moeda)})`).join("\n");
-  return [
-    `*Orçamento ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`,
-    cliente ? `Cliente: ${cliente.nome}` : "",
-    "",
-    itens,
-    "",
-    `*Total: ${formatMoney(total, moeda)}*`,
-    `Válido até ${formatDateBR(validoAte)}`,
-    o.condicoes ? `\n${o.condicoes}` : "",
-  ].filter(Boolean).join("\n");
-}
 
 function MiniClienteForm({ onSave, onCancel }: { onSave: (dados: Omit<Cliente, "id">) => void; onCancel: () => void }) {
   const [nome, setNome] = useState("");
@@ -407,7 +312,7 @@ export default function OrcamentosPage() {
 
   const handleDuplicar = (o: Orcamento) => {
     // Pagamentos são do orçamento original: a cópia começa sem nenhum.
-    const { id: _id, criadoEm: _criadoEm, pagamentos: _pagamentos, ...campos } = o;
+    const { id: _id, criadoEm: _criadoEm, numero: _numero, pagamentos: _pagamentos, ...campos } = o;
     addOrcamento({ ...campos, data: todayStr(), status: "rascunho", itens: campos.itens.map((it) => ({ ...it, id: uuid() })) });
     toast.success("Orçamento duplicado.");
   };
@@ -418,17 +323,17 @@ export default function OrcamentosPage() {
     toast.success("Orçamento excluído.");
   };
 
-  const handlePdf = (o: Orcamento, index: number) => {
+  const handlePdf = (o: Orcamento) => {
     const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
     const container = document.getElementById("orcamento-print");
     if (!container) return;
-    container.innerHTML = gerarOrcamentoHtml(o, cliente, numeroOrcamento(empresaAtiva.orcamentos, index), empresaAtiva);
+    container.innerHTML = gerarOrcamentoHtml(o, cliente, formatarNumeroOrcamento(o.numero), empresaAtiva);
     window.print();
   };
 
-  const handleWhatsapp = (o: Orcamento, index: number) => {
+  const handleWhatsapp = (o: Orcamento) => {
     const cliente = empresaAtiva.clientes.find((c) => c.id === o.clienteId);
-    const texto = gerarTextoWhatsapp(o, cliente, numeroOrcamento(empresaAtiva.orcamentos, index), empresaAtiva);
+    const texto = gerarTextoWhatsapp(o, cliente, formatarNumeroOrcamento(o.numero), empresaAtiva);
     const numero = (cliente?.telefone || "").replace(/\D/g, "");
     const url = `https://wa.me/${numero ? (numero.length <= 11 ? "55" + numero : numero) : ""}?text=${encodeURIComponent(texto)}`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -449,13 +354,12 @@ export default function OrcamentosPage() {
               <Thead><tr><Th>Número</Th><Th>Cliente</Th><Th>Emissão</Th><Th>Válido até</Th><Th>Total</Th><Th>Status</Th><Th></Th></tr></Thead>
               <tbody>
                 {list.map((o) => {
-                  const index = empresaAtiva.orcamentos.findIndex((x) => x.id === o.id);
                   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
                   const validoAte = addDaysStr(o.data, o.validadeDias);
                   const status = statusEfetivo(o);
                   return (
                     <Tr key={o.id}>
-                      <Td className="font-semibold">{numeroOrcamento(empresaAtiva.orcamentos, index)}</Td>
+                      <Td className="font-semibold">{formatarNumeroOrcamento(o.numero)}</Td>
                       <Td>{clienteNome(o.clienteId)}</Td>
                       <Td>{formatDateBR(o.data)}</Td>
                       <Td>{formatDateBR(validoAte)}</Td>
@@ -464,10 +368,10 @@ export default function OrcamentosPage() {
                       <Td className="whitespace-nowrap">
                         <div className="flex flex-wrap justify-end gap-1.5">
                           <Button variant="secondary" size="sm" onClick={() => openEditar(o)}>Editar</Button>
-                          <Button variant="secondary" size="sm" onClick={() => handlePdf(o, index)} title="Gerar PDF/imprimir">
+                          <Button variant="secondary" size="sm" onClick={() => handlePdf(o)} title="Gerar PDF/imprimir">
                             <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />
                           </Button>
-                          <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o, index)} title="Enviar por WhatsApp">
+                          <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp">
                             <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
                           </Button>
                           {contratosHabilitados && (
@@ -511,7 +415,7 @@ export default function OrcamentosPage() {
           {orcamentoDocumentos && (
             <>
               <DialogTitle>
-                Contrato e recibos — {numeroOrcamento(empresaAtiva.orcamentos, empresaAtiva.orcamentos.findIndex((x) => x.id === orcamentoDocumentos.id))} · {clienteNome(orcamentoDocumentos.clienteId)}
+                Contrato e recibos — {formatarNumeroOrcamento(orcamentoDocumentos.numero)} · {clienteNome(orcamentoDocumentos.clienteId)}
               </DialogTitle>
               <DocumentosOrcamento orcamento={orcamentoDocumentos} />
             </>

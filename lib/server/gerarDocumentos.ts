@@ -9,6 +9,7 @@ import { montarCamposContrato, montarCamposRecibo, type Resultado } from "@/lib/
 import { ErroMarcadores, preencherModelo } from "@/lib/documentos/preencher";
 import { formatarNumeroDocumento, hojeNoFuso, nomeArquivoDocumento } from "@/lib/documentos/formatos";
 import { uuid } from "@/lib/helpers";
+import { percentualSinal } from "@/lib/agenda";
 import type { DocumentoGerado, Empresa, Orcamento, TipoDocumento } from "@/lib/tipos";
 
 /**
@@ -144,7 +145,14 @@ export async function gerarContrato(uid: string, empresaId: string, orcamentoId:
     clienteId: cliente?.id ?? orcamento.clienteId,
     tipo: "contrato",
     montar: (numero, hoje) =>
-      montarCamposContrato({ prestador: empresa.prestador, cliente, orcamento, numero, dataGeracao: hoje }),
+      montarCamposContrato({
+        prestador: empresa.prestador,
+        cliente,
+        orcamento,
+        numero,
+        dataGeracao: hoje,
+        sinalPercentual: percentualSinal(orcamento, empresa),
+      }),
   });
 }
 

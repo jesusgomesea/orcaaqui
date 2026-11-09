@@ -4,7 +4,7 @@
 
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
-import type { Campos } from "./campos.ts";
+import type { Campos } from "./campos";
 
 export class ErroMarcadores extends Error {
   marcadores: string[];

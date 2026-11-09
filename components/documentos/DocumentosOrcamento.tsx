@@ -12,6 +12,7 @@ import { ErroDocumento, gerarContrato, gerarRecibo, useDocumentos } from "@/lib/
 import { PAGAMENTO_LABEL, valorSugerido } from "@/lib/documentos/campos";
 import { calcularSinal, formatarData, formatarReais, paraCentavos } from "@/lib/documentos/formatos";
 import { calcOrcamentoTotais, todayStr, uuid } from "@/lib/helpers";
+import { percentualSinal } from "@/lib/agenda";
 import type { Orcamento, Pagamento, TipoPagamento } from "@/lib/tipos";
 
 function ListaFaltando({ titulo, itens }: { titulo: string; itens: string[] }) {
@@ -38,14 +39,15 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
 
   const pagamentos = orcamento.pagamentos || [];
   const { total } = calcOrcamentoTotais(orcamento.itens, orcamento.desconto, orcamento.descontoTipo, orcamento.acrescimo);
-  const { sinal, restante } = calcularSinal(total);
+  const pct = percentualSinal(orcamento, empresaAtiva);
+  const { sinal, restante } = calcularSinal(total, pct);
   const pagoCentavos = pagamentos.reduce((s, p) => s + paraCentavos(p.valor), 0);
 
   const contratos = documentos.filter((d) => d.tipo === "contrato" && d.orcamentoId === orcamento.id);
   const recibosDe = (pagamentoId: string) => documentos.filter((d) => d.tipo === "recibo" && d.pagamentoId === pagamentoId);
 
   const [novoTipo, setNovoTipo] = useState<TipoPagamento>(pagamentos.length ? "restante" : "sinal");
-  const [novoValor, setNovoValor] = useState(() => valorSugerido(orcamento, pagamentos.length ? "restante" : "sinal"));
+  const [novoValor, setNovoValor] = useState(() => valorSugerido(orcamento, pagamentos.length ? "restante" : "sinal", pct));
   const [novaData, setNovaData] = useState(todayStr());
   const [novaForma, setNovaForma] = useState("Pix");
 
@@ -82,7 +84,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
     updateOrcamento(orcamento.id, { pagamentos: lista });
     const proximo: TipoPagamento = "restante";
     setNovoTipo(proximo);
-    setNovoValor(valorSugerido({ ...orcamento, pagamentos: lista }, proximo));
+    setNovoValor(valorSugerido({ ...orcamento, pagamentos: lista }, proximo, pct));
     toast.success("Pagamento registrado. Agora é só gerar o recibo.");
   };
 
@@ -138,7 +140,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
           <Receipt className="h-4 w-4" strokeWidth={1.8} /> Pagamentos e recibos
         </h3>
         <p className="mb-3 text-[12px] text-text-muted">
-          Total {formatarReais(total)} · sinal {formatarReais(sinal)} · restante {formatarReais(restante)} · pago{" "}
+          Total {formatarReais(total)} · sinal ({String(pct).replace(".", ",")}%) {formatarReais(sinal)} · restante {formatarReais(restante)} · pago{" "}
           {formatarReais(pagoCentavos / 100)} · saldo {formatarReais(Math.max(0, paraCentavos(total) - pagoCentavos) / 100)}
         </p>
 
@@ -150,14 +152,16 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
               <li key={p.id} className="rounded-lg border border-border p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[13px]">
-                    <span className="font-semibold text-text">{PAGAMENTO_LABEL[p.tipo]}</span>{" "}
+                    <span className="font-semibold text-text">{p.tipo === "outro" && p.descricao ? p.descricao : PAGAMENTO_LABEL[p.tipo]}</span>{" "}
                     <span className="text-text">{formatarReais(p.valor)}</span>{" "}
                     <span className="text-text-muted">· {formatarData(p.data)} · {p.forma}</span>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button size="sm" variant="secondary" disabled={!!gerando} onClick={() => handleGerarRecibo(p)}>
-                      {gerando === p.id ? "Gerando…" : recibosDe(p.id).length ? "Gerar de novo" : "Gerar recibo"}
-                    </Button>
+                    {p.tipo !== "outro" && (
+                      <Button size="sm" variant="secondary" disabled={!!gerando} onClick={() => handleGerarRecibo(p)}>
+                        {gerando === p.id ? "Gerando…" : recibosDe(p.id).length ? "Gerar de novo" : "Gerar recibo"}
+                      </Button>
+                    )}
                     <Button size="sm" variant="danger" disabled={!!gerando} onClick={() => handleRemoverPagamento(p)} title="Remover pagamento">
                       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </Button>
@@ -184,7 +188,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
                 onValueChange={(v) => {
                   const tipo = v as TipoPagamento;
                   setNovoTipo(tipo);
-                  setNovoValor(valorSugerido(orcamento, tipo));
+                  setNovoValor(valorSugerido(orcamento, tipo, pct));
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>

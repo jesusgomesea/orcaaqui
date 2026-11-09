@@ -1,13 +1,12 @@
-// Testes das regras de contrato e recibo. Rodar com `npm test`
-// (node --test, sem dependência extra: o Node executa TypeScript direto).
+// Testes das regras de contrato e recibo. Rodar com `npm test` (Vitest).
 
-import { test } from "node:test";
+import { expect, test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import PizZip from "pizzip";
 import type { Cliente, Orcamento, Prestador } from "../tipos";
-import { valorPorExtenso, dataPorExtenso, numeroPorExtenso } from "./extenso.ts";
+import { valorPorExtenso, dataPorExtenso, numeroPorExtenso } from "./extenso";
 import {
   calcularSinal,
   cpfValido,
@@ -17,9 +16,9 @@ import {
   formatarTelefone,
   hojeNoFuso,
   nomeArquivoDocumento,
-} from "./formatos.ts";
-import { montarCamposContrato, montarCamposRecibo, totalPagoAte } from "./campos.ts";
-import { preencherModelo, marcadoresRestantes, ErroMarcadores } from "./preencher.ts";
+} from "./formatos";
+import { montarCamposContrato, montarCamposRecibo, totalPagoAte } from "./campos";
+import { preencherModelo, marcadoresRestantes, ErroMarcadores } from "./preencher";
 
 const NBSP = " ";
 const reais = (s: string) => s.replace(" ", NBSP);
@@ -98,6 +97,7 @@ const cliente: Cliente = {
 function orcamentoBase(patch: Partial<Orcamento> = {}): Orcamento {
   return {
     id: "o1",
+    numero: 1,
     criadoEm: "2026-11-01",
     clienteId: "c1",
     data: "2026-11-01",
@@ -256,4 +256,23 @@ test("campo vazio bloqueia a geração com o nome do marcador", () => {
     () => preencherModelo(modelo("contrato-prestacao-servicos.docx"), { ...campos, local: "" }),
     (e: unknown) => e instanceof ErroMarcadores && e.marcadores.includes("local")
   );
+});
+
+test("contrato — sinal diferente de 40% bloqueia (o percentual está escrito no modelo)", () => {
+  const { faltando } = montarCamposContrato({
+    prestador, cliente, orcamento: orcamentoBase(), numero: "001/2026", dataGeracao: "2026-11-09", sinalPercentual: 30,
+  });
+  expect(faltando.some((f) => f.startsWith("Sinal de 40%") && f.includes("30%"))).toBe(true);
+  const ok = montarCamposContrato({
+    prestador, cliente, orcamento: orcamentoBase(), numero: "001/2026", dataGeracao: "2026-11-09", sinalPercentual: 40,
+  });
+  expect(ok.faltando).toEqual([]);
+});
+
+test("recibo — pagamento do tipo outro não gera recibo", () => {
+  const o = orcamentoBase({ pagamentos: [{ id: "px", tipo: "outro", valor: 45, data: "2026-12-20", forma: "Pix", descricao: "Remarcação" }] });
+  const { faltando } = montarCamposRecibo({
+    prestador, cliente, orcamento: o, pagamentoId: "px", contrato: { numero: "001/2026", dataGeracao: "2026-11-09" }, numero: "003/2026",
+  });
+  expect(faltando.some((f) => f.includes("sinal, restante ou integral"))).toBe(true);
 });

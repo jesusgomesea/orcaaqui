@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getStore } from "@netlify/blobs";
+import { comLimite, storeBlobs } from "@/lib/server/blobs";
 import type { EstadoApp } from "@/lib/tipos";
 
 const NOME_DA_STORE = "orcaaqui-dados";
@@ -11,16 +11,19 @@ const NOME_DA_STORE = "orcaaqui-dados";
  * poderia recarregar e ver o estado anterior.
  */
 function store() {
-  return getStore({ name: NOME_DA_STORE, consistency: "strong" });
+  return storeBlobs(NOME_DA_STORE);
 }
 
 export async function lerEstado(usuarioId: string): Promise<EstadoApp | null> {
-  const bruto = await store().get(`usuario/${usuarioId}.json`, { type: "json" });
+  const bruto = await comLimite(
+    "Leitura dos dados (Netlify Blobs)",
+    store().get(`usuario/${usuarioId}.json`, { type: "json" })
+  );
   return (bruto as EstadoApp | null) ?? null;
 }
 
 export async function gravarEstado(usuarioId: string, estado: EstadoApp): Promise<void> {
-  await store().setJSON(`usuario/${usuarioId}.json`, estado);
+  await comLimite("Gravação dos dados (Netlify Blobs)", store().setJSON(`usuario/${usuarioId}.json`, estado));
 }
 
 /**

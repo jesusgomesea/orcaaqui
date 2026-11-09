@@ -15,6 +15,7 @@ import {
 import { useSessao } from "@/components/auth/ProvedorSessao";
 import { uuid, todayStr } from "./helpers";
 import { NOVIDADES } from "./changelog";
+import { codigoServicoLivre, defaultState, mergeEmpresa, mudouPreco, normalizar, subirVersaoCatalogo } from "./estado";
 import type {
   Cliente,
   Empresa,
@@ -30,67 +31,6 @@ const CHAVE_LOCAL_LEGADA = "orcaaqui-dados-v1";
 const CHAVE_LOCAL_MIGRADA = "orcaaqui-dados-migrado-v1";
 
 const ESPERA_ANTES_DE_SALVAR = 700;
-
-function defaultEmpresa(): Empresa {
-  return {
-    id: uuid(),
-    nome: "",
-    documento: "",
-    telefone: "",
-    email: "",
-    site: "",
-    endereco: "",
-    logoDataUrl: "",
-    corPrimaria: "#2563eb",
-    moeda: "BRL",
-    dadosBancarios: "",
-    condicoesPadrao: "Sinal de 50% na confirmação, restante na entrega.",
-    clientes: [],
-    orcamentos: [],
-    servicos: [],
-  };
-}
-
-export function defaultState(): EstadoApp {
-  const empresa = defaultEmpresa();
-  return {
-    empresaAtivaId: empresa.id,
-    empresas: [empresa],
-    novidadesVistoId: NOVIDADES[0]?.id || null,
-  };
-}
-
-function mergeEmpresa(parcial: Partial<Empresa>): Empresa {
-  return { ...defaultEmpresa(), ...parcial, id: parcial.id || uuid() };
-}
-
-// Dados salvos antes do suporte a múltiplas empresas eram um único objeto
-// `{ empresa, clientes, orcamentos }` no topo do state. Migra pra dentro de
-// `empresas: [...]` pra não perder nada de quem já usava — vale tanto pro que
-// vem do localStorage antigo quanto pro backup JSON importado.
-function migrarSeNecessario(raw: EstadoImportado): Partial<EstadoApp> | null {
-  if (raw.empresas) return raw as Partial<EstadoApp>;
-  if (!raw.empresa) return null;
-  const empresa = mergeEmpresa({
-    ...raw.empresa,
-    clientes: raw.clientes || [],
-    orcamentos: raw.orcamentos || [],
-    servicos: raw.servicos || [],
-  });
-  return { empresaAtivaId: empresa.id, empresas: [empresa] };
-}
-
-/** Normaliza qualquer entrada (servidor, backup, localStorage) num EstadoApp. */
-function normalizar(bruto: EstadoImportado | null | undefined): EstadoApp | null {
-  if (!bruto) return null;
-  const migrado = migrarSeNecessario(bruto);
-  if (!migrado?.empresas?.length) return null;
-  const empresas = migrado.empresas.map(mergeEmpresa);
-  const empresaAtivaId = empresas.some((e) => e.id === migrado.empresaAtivaId)
-    ? (migrado.empresaAtivaId as string)
-    : empresas[0].id;
-  return { empresaAtivaId, empresas, novidadesVistoId: migrado.novidadesVistoId ?? null };
-}
 
 /** Dados que ficaram neste navegador na época em que o app não tinha login. */
 function lerLegadoDoNavegador(): EstadoApp | null {
@@ -136,7 +76,7 @@ interface StoreValue {
   addClientes: (clientes: Partial<Cliente>[]) => Cliente[];
   updateCliente: (id: string, patch: Partial<Cliente>) => void;
   removeCliente: (id: string) => void;
-  addOrcamento: (orcamento: Partial<Orcamento>) => Orcamento;
+  addOrcamento: (orcamento: Partial<Orcamento>) => void;
   updateOrcamento: (id: string, patch: Partial<Orcamento>) => void;
   removeOrcamento: (id: string) => void;
   addServico: (servico: Partial<Servico>) => Servico;
@@ -206,7 +146,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const resposta = await fetch("/api/dados");
-        if (!resposta.ok) throw new Error(`Falha ao carregar (${resposta.status})`);
+        if (!resposta.ok) {
+          // A rota devolve a causa (etapa que travou, última resposta do Blobs).
+          const { erro } = (await resposta.json().catch(() => ({}))) as { erro?: string };
+          throw new Error(erro || `Falha ao carregar (${resposta.status})`);
+        }
         const { estado } = (await resposta.json()) as { estado: EstadoImportado | null };
         if (!vivo) return;
 
@@ -225,7 +169,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (!vivo) return;
         console.error("Não foi possível carregar os dados da sua conta.", e);
-        setErroDeCarga("Não foi possível carregar seus dados. Verifique a conexão e recarregue a página.");
+        const detalhe = e instanceof Error && !e.message.startsWith("Failed to fetch") ? ` Detalhe: ${e.message}` : "";
+        setErroDeCarga(`Não foi possível carregar seus dados. Verifique a conexão e recarregue a página.${detalhe}`);
       }
     })();
 
@@ -334,9 +279,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addOrcamento = useCallback(
     (orcamento: Partial<Orcamento>) => {
-      const novo = { id: uuid(), criadoEm: todayStr(), ...orcamento } as Orcamento;
-      patchEmpresaAtiva((e) => ({ ...e, orcamentos: [...e.orcamentos, novo] }));
-      return novo;
+      // O número sai do contador da empresa, então precisa ser resolvido aqui
+      // dentro. `numero` vem depois do spread de propósito: duplicar um
+      // orçamento traz o número do original, e o novo tem que ganhar o seu.
+      patchEmpresaAtiva((e) => {
+        const numero = e.proximoNumero;
+        const novo = { id: uuid(), criadoEm: todayStr(), ...orcamento, numero } as Orcamento;
+        return { ...e, orcamentos: [...e.orcamentos, novo], proximoNumero: numero + 1 };
+      });
     },
     [patchEmpresaAtiva]
   );
@@ -353,20 +303,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addServico = useCallback(
     (servico: Partial<Servico>) => {
-      const novo = { id: uuid(), categoria: "", nome: "", descricao: "", valor: 0, ...servico, } as Servico;
-      patchEmpresaAtiva((e) => ({ ...e, servicos: [...e.servicos, novo] }));
+      const novo = { id: uuid(), categoria: "", nome: "", descricao: "", valor: 0, ...servico } as Servico;
+      patchEmpresaAtiva((e) => {
+        const usados = new Set(e.servicos.map((sv) => sv.codigo).filter((c): c is string => !!c));
+        // Determinístico (derivado do id): rodar duas vezes no StrictMode dá o mesmo código.
+        novo.codigo = novo.codigo && !usados.has(novo.codigo) ? novo.codigo : codigoServicoLivre(novo.id, usados);
+        return { ...e, servicos: [...e.servicos, novo] };
+      });
       return novo;
     },
     [patchEmpresaAtiva]
   );
   const updateServico = useCallback(
     (id: string, patch: Partial<Servico>) => {
-      patchEmpresaAtiva((e) => ({ ...e, servicos: e.servicos.map((sv) => (sv.id === id ? { ...sv, ...patch } : sv)) }));
+      patchEmpresaAtiva((e) => {
+        const antes = e.servicos.find((sv) => sv.id === id);
+        const { codigo: _codigo, ...semCodigo } = patch; // o código é fixo: está em mensagens já enviadas
+        const depois = antes ? { ...antes, ...semCodigo } : undefined;
+        return {
+          ...e,
+          servicos: e.servicos.map((sv) => (sv.id === id && depois ? depois : sv)),
+          config: antes && depois && mudouPreco(antes, depois) ? subirVersaoCatalogo(e.config) : e.config,
+        };
+      });
     },
     [patchEmpresaAtiva]
   );
   const removeServico = useCallback(
-    (id: string) => patchEmpresaAtiva((e) => ({ ...e, servicos: e.servicos.filter((sv) => sv.id !== id) })),
+    (id: string) =>
+      patchEmpresaAtiva((e) => ({
+        ...e,
+        servicos: e.servicos.filter((sv) => sv.id !== id),
+        // Orçamentos com este serviço na [ref] não recalculam mais igual: avisa como tabela antiga.
+        config: subirVersaoCatalogo(e.config),
+      })),
     [patchEmpresaAtiva]
   );
 

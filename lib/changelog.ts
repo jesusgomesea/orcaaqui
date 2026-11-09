@@ -13,12 +13,28 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-02",
+    data: "2026-11-08",
+    tipo: "correcao",
+    titulo: "Mais estabilidade ao carregar e salvar",
+    descricao:
+      "Corrigimos uma falha do armazenamento que podia deixar a tela em \"Carregando seus dados…\" ou travar a gravação, principalmente no primeiro acesso de uma conta nova e ao gerar contratos e recibos. Se algo falhar, a mensagem agora diz o motivo.",
+  },
+  {
     id: "2026-11-08-01",
     data: "2026-11-08",
     tipo: "novidade",
     titulo: "Contrato e recibo gerados a partir do orçamento",
     descricao:
       "Em Empresa → Contratos e recibos, ative a geração e preencha seus dados de prestador. No orçamento aprovado, o botão de contrato gera o PDF com os dados do cliente e do serviço, e cada pagamento registrado ganha o seu recibo. Tudo fica no histórico do orçamento e do cliente; gerar de novo cria uma nova versão sem apagar a anterior.",
+  },
+  {
+    id: "2026-09-10-02",
+    data: "2026-09-10",
+    tipo: "correcao",
+    titulo: "O número do orçamento não muda mais",
+    descricao:
+      "Antes, excluir um orçamento renumerava todos os seguintes — o ORC que o cliente tinha em mãos deixava de bater com o daqui. Agora o número é gravado na criação e não muda mais. Os orçamentos que já existiam mantiveram exatamente os números que você via.",
   },
   {
     id: "2026-09-10-01",

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getStore } from "@netlify/blobs";
+import { comLimite, storeBlobs } from "@/lib/server/blobs";
 import type { DocumentoGerado, TipoDocumento } from "@/lib/tipos";
 
 /**
@@ -20,7 +20,7 @@ import type { DocumentoGerado, TipoDocumento } from "@/lib/tipos";
 const NOME_DA_STORE = "orcaaqui-documentos";
 
 function store() {
-  return getStore({ name: NOME_DA_STORE, consistency: "strong" });
+  return storeBlobs(NOME_DA_STORE);
 }
 
 const prefixoEmpresa = (uid: string, eid: string) => `usuario/${uid}/empresa/${eid}`;
@@ -38,11 +38,14 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function atualizarJson<T>(chave: string, inicial: T, alterar: (atual: T) => T): Promise<T> {
   const s = store();
   for (let tentativa = 0; tentativa < TENTATIVAS; tentativa++) {
-    const atual = await s.getWithMetadata(chave, { type: "json" });
+    const atual = await comLimite("Leitura do índice (Netlify Blobs)", s.getWithMetadata(chave, { type: "json" }));
     const novo = alterar(atual ? (atual.data as T) : inicial);
-    const resultado = atual?.etag
-      ? await s.setJSON(chave, novo, { onlyIfMatch: atual.etag })
-      : await s.setJSON(chave, novo, { onlyIfNew: true });
+    // 412 (outra geração ganhou) é exatamente a resposta cujo corpo o Blobs
+    // descarta — sem o fetch de lib/server/blobs.ts isto travava no Netlify.
+    const resultado = await comLimite(
+      "Gravação condicional (Netlify Blobs)",
+      atual?.etag ? s.setJSON(chave, novo, { onlyIfMatch: atual.etag }) : s.setJSON(chave, novo, { onlyIfNew: true })
+    );
     if (resultado.modified) return novo;
     await esperar(30 + Math.random() * 120 * (tentativa + 1));
   }
@@ -61,7 +64,10 @@ interface Indice {
 }
 
 export async function listarDocumentos(uid: string, eid: string): Promise<DocumentoGerado[]> {
-  const indice = (await store().get(`${prefixoEmpresa(uid, eid)}/indice.json`, { type: "json" })) as Indice | null;
+  const indice = (await comLimite(
+    "Leitura do histórico (Netlify Blobs)",
+    store().get(`${prefixoEmpresa(uid, eid)}/indice.json`, { type: "json" })
+  )) as Indice | null;
   return indice?.documentos ?? [];
 }
 
@@ -95,7 +101,10 @@ export async function gravarArquivo(
 ): Promise<void> {
   // Grava só se for novo: um arquivo gerado nunca é sobrescrito.
   const copia = bytes.slice().buffer as ArrayBuffer;
-  const r = await store().set(chaveArquivo(uid, docId), copia, { metadata: meta, onlyIfNew: true });
+  const r = await comLimite(
+    "Gravação do arquivo (Netlify Blobs)",
+    store().set(chaveArquivo(uid, docId), copia, { metadata: meta, onlyIfNew: true })
+  );
   if (!r.modified) throw new Error("Já existe um arquivo com este identificador.");
 }
 
@@ -103,7 +112,10 @@ export async function lerArquivo(
   uid: string,
   docId: string
 ): Promise<{ bytes: ArrayBuffer; nomeArquivo: string; contentType: string } | null> {
-  const r = await store().getWithMetadata(chaveArquivo(uid, docId), { type: "arrayBuffer" });
+  const r = await comLimite(
+    "Leitura do arquivo (Netlify Blobs)",
+    store().getWithMetadata(chaveArquivo(uid, docId), { type: "arrayBuffer" })
+  );
   if (!r) return null;
   return {
     bytes: r.data,

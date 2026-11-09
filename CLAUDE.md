@@ -11,7 +11,7 @@ Deixar qualquer prestador de serviço montar um orçamento com a cara da própri
 - Netlify Identity (`@netlify/identity`) para login; Netlify Blobs (`@netlify/blobs`) para os dados
 - Radix UI primitives (dialog, select, tabs) + `class-variance-authority` + `lucide-react`
 - `sonner` para toasts, `recharts` pro gráfico de faturamento
-- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`), `node --test` para as regras de documentos (`npm test`)
+- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`), Vitest para as regras em `lib/` (`npm test`; config em [vitest.config.mts](vitest.config.mts), alias `@/` igual ao do app)
 - `docxtemplater` + `pizzip` para preencher os modelos de contrato/recibo; Gotenberg (externo) para .docx → PDF
 
 ## Rodar localmente
@@ -51,15 +51,22 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
     dadosBancarios, condicoesPadrao,
     clientes: [{ id, nome, documento, telefone, email, endereco, observacoes }],
     orcamentos: [{
-      id, criadoEm, clienteId, data, validadeDias, moeda,
-      itens: [{ id, descricao, quantidade, valorUnitario }],
+      id, numero, criadoEm, clienteId, data, validadeDias, moeda,
+      itens: [{ id, descricao, quantidade, valorUnitario, tipo? /* adicional */, servicoId? }],
       desconto, descontoTipo /* "valor" | "percentual" */, acrescimo,
       condicoes, observacoes,
       status /* rascunho | enviado | aprovado | recusado */,
-      servicoContrato?, pagamentos?: [{ id, tipo /* sinal | restante | integral */, valor, data, forma }],
+      servicoContrato? /* data, horários e local do serviço moram aqui */,
+      pagamentos?: [{ id, tipo /* sinal | restante | integral | outro */, valor, data, forma, descricao? }],
+      codigoRef? /* ORC-0012 | EJ-XXXXX */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
-    servicos: [{ id, categoria, nome, descricao, valor }],
+    servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
+    config: { sinalPercentual /* 40 */, validadeDias, deslocamentos: [{ id, nome, valor }],
+              etapasAgenda: [{ id, nome, descricao? }], urlTabelaEj?, versaoCatalogo, codigo },
+    agendamentos: [{ id, criadoEm, atualizadoEm, orcamentoId, clienteId, moeda, etapa, historico,
+                     extras: [{ id, descricao, valor }], notas, valorCombinado, sinalPercentual }],
+    proximoNumero,
   }],
   novidadesVistoId: string | null,
 }
@@ -67,11 +74,20 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
 
 Cada empresa é totalmente isolada (clientes/orçamentos/serviços próprios) — pense nela como um "workspace". A empresa ativa é acessada via `useStore().empresaAtiva` (não `state.empresas[0]` — sempre resolver pelo `empresaAtivaId`). Toda mutação de cliente/orçamento/serviço no store (`addCliente`, `addOrcamento`, etc.) escreve na empresa ativa, nunca precisa de `empresaId` como argumento.
 
-**Migrações de formato.** `normalizar()` em `store.tsx` é o caminho por onde passa tudo que entra (servidor, backup importado, localStorage antigo). Dentro dele, `migrarSeNecessario()` cobre o formato v1, de empresa única (`{ empresa, clientes, orcamentos }` no topo). Ao mexer no formato de novo, manter esse caminho — é o que evita perda de dados de quem já usava.
+**Migrações de formato.** `normalizar()` em [lib/estado.ts](lib/estado.ts) (puro, testado em `lib/estado.test.ts` com um estado e um backup antigos) é o caminho por onde passa tudo que entra (servidor, backup importado, localStorage antigo). Dentro dele, `migrarSeNecessario()` cobre o formato v1, de empresa única (`{ empresa, clientes, orcamentos }` no topo). Ao mexer no formato de novo, manter esse caminho — é o que evita perda de dados de quem já usava. Campo novo entra opcional ou ganha default em `mergeEmpresa`/`normalizarConfig`, e ganha caso no teste.
+
+- **Códigos curtos são derivados do id** (`codigoDeId`, hash): `config.codigo` da empresa e `Servico.codigo` vão na linha `[ref]` das mensagens. Uma conta antiga ganha sempre os mesmos códigos ao abrir, mesmo antes de gravar — se fossem aleatórios, recarregar a página mudaria a `[ref]` de mensagens já enviadas. `Servico.codigo` nunca muda depois de criado (o store ignora `codigo` em `updateServico`).
+- **`config.versaoCatalogo`** sobe sozinho quando valor/preço por volume de um serviço muda ou um serviço é removido (`mudouPreco` + `subirVersaoCatalogo`); quem cola uma `[ref]` com versão antiga recebe aviso de tabela antiga.
+
+**Agenda** ([lib/agenda.ts](lib/agenda.ts)): porte do modelo do painel do EJ. O agendamento guarda só etapas, histórico, extras, notas, `valorCombinado` e o `sinalPercentual` gravado na criação; **pagamentos são os de `Orcamento.pagamentos`** (os mesmos dos recibos) e data/horário/local vêm de `Orcamento.servicoContrato` — não duplicar. `cancelado` é etapa fixa (`ETAPA_CANCELADO`); a última de `config.etapasAgenda` é a de concluído.
+
+**Sinal** = `calcularSinal(total, %)` em [lib/documentos/formatos.ts](lib/documentos/formatos.ts): `ceil(total × % / 100)` em reais inteiros, restante = total − sinal. O % vem de `percentualSinal()`: o do orçamento, senão o da empresa, senão 40. **O contrato só sai com 40%**: o modelo traz "Sinal (40%)" escrito, então outro percentual bloqueia a geração (`SINAL_DO_MODELO`). Pagamento `outro` (pós-venda) não gera recibo.
 
 **Migração do localStorage.** Quem usava a versão sem login tinha tudo em `localStorage["orcaaqui-dados-v1"]`. No primeiro login, se a conta ainda não tem dados no servidor, o store sobe o que houver nessa chave e depois a arquiva em `orcaaqui-dados-migrado-v1`. O arquivamento não é opcional: sem ele, a próxima conta a entrar neste mesmo navegador importaria os dados da primeira.
 
 Status **expirado** não é gravado — é calculado na hora (`statusEfetivo` em [lib/helpers.ts](lib/helpers.ts)) comparando a validade com a data de hoje.
+
+**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em `store.tsx` numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
 
 A logo é salva como `data:` URL (base64) direto no state; o upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) rejeita arquivos acima de 1.5MB, e a rota recusa corpo acima de 8MB.
 
@@ -85,7 +101,7 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 
 **A raiz `/` é pública** ([app/page.tsx](app/page.tsx)) — a landing, fora do route group. O app autenticado começa em `/painel`. Por isso todo destino pós-autenticação aponta para `/painel`, nunca para `/`: `/entrar`, `/nova-senha`, o `handleAuthCallback()` do [ProvedorSessao](components/auth/ProvedorSessao.tsx) e o item "Painel" do [Sidebar](components/layout/Sidebar.tsx). O "Sair" é a exceção — leva de volta para a landing. Quem chega sem sessão numa rota do `(app)` continua caindo em `/entrar` (já queria o app, não a vitrine).
 
-- **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. Lê `useSessao()` só pra trocar o CTA por "Ir para o painel" quem já está logado; não usa o `StoreProvider`
+- **`/`** ([app/page.tsx](app/page.tsx)) — Landing pública: hero, recursos, como funciona e CTA para `/entrar`. A página é Server Component só pra poder exportar `metadata` (título/OG, já que o link circula em WhatsApp e redes); o conteúdo é a ilha cliente [components/landing/Landing.tsx](components/landing/Landing.tsx), que lê `useSessao()` apenas pra trocar o CTA por "Ir para o painel" de quem já está logado. Não usa o `StoreProvider`
 - **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
@@ -100,7 +116,9 @@ A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tem
 O React só espelha esse estado, via `useSyncExternalStore` em [lib/useTema.ts](lib/useTema.ts) — no servidor não há como saber o que o script decidiu, e chutar causaria erro de hidratação. A paleta de cada tema é um bloco de variáveis CSS em [app/globals.css](app/globals.css); componente novo usa os tokens (`bg-surface`, `text-text-muted`…), nunca cor fixa.
 
 ## Geração de PDF
-Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` dentro de `app/(app)/orcamentos/page.tsx`, porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
+Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` em [lib/orcamento.ts](lib/orcamento.ts) (junto de `gerarTextoWhatsapp`, ambas com teste em `lib/orcamento.test.ts`), porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
+
+**Todo valor de dado interpolado ali passa por `escapeHtml()`, e a logo por `logoSegura()`** (ambos em [helpers.ts](lib/helpers.ts)). Isso vira `innerHTML`: sem escape, uma descrição com `<` some do PDF e um nome de cliente vindo de CSV de terceiro (`<img src=x onerror=...>`) roda script na sessão de quem importou, com acesso à `/api/dados`. Campo novo no documento impresso entra escapado.
 
 ## Contratos e recibos (.docx → PDF)
 Gera o contrato de prestação de serviços fotográficos e o recibo de pagamento a partir dos modelos em [templates/](templates/) (EJ Fotografia). Liga por empresa em Empresa → "Contratos e recibos" (`empresa.prestador.habilitado`); desligado, nenhuma tela mostra nada de contratos.
@@ -112,11 +130,19 @@ Gera o contrato de prestação de serviços fotográficos e o recibo de pagament
 - **Numeração**: `NNN/AAAA` por empresa, sequências separadas de contrato e recibo, reinicia no ano (fuso de Teresina, `America/Fortaleza`). Cada geração — inclusive "nova versão" — consome um número novo; número reservado e não usado (falha na conversão) não volta.
 - **PDF via Gotenberg** ([lib/server/pdf.ts](lib/server/pdf.ts)): a Netlify não roda LibreOffice nas Functions. Variáveis de ambiente `GOTENBERG_URL` e, se o Gotenberg tiver basic auth, `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`. Sem `GOTENBERG_URL` o documento sai em .docx e a tela avisa. A imagem do Gotenberg precisa ter Georgia e Calibri (ou Carlito, de mesma métrica), senão a paginação muda.
 - **LGPD**: CPF nunca em URL nem em nome de arquivo (`Contrato 001-2026 - Ana Souza.pdf`); download só em `GET /api/documentos/arquivo/<id>`, atrás de `getUser()`, com a chave do arquivo sob o id do usuário.
-- **Regras puras com teste** em `lib/documentos/` (sinal de 40% arredondado para cima em reais, valor e data por extenso, CPF/telefone, montagem dos campos). Rodar `npm test` (`node --test`, sem dependência extra). Os imports entre arquivos dessa pasta levam `.ts` (`allowImportingTsExtensions`) para o Node executá-los direto; `import type` de fora da pasta é apagado e não pesa.
+- **Regras puras com teste** em `lib/documentos/` (sinal de 40% arredondado para cima em reais, valor e data por extenso, CPF/telefone, montagem dos campos). Rodar `npm test`.
 - Os modelos entram no pacote da função por `outputFileTracingIncludes` em [next.config.ts](next.config.ts).
 
 ## Diálogos (Radix)
 Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components/ui/dialog.tsx) **não têm animação de abrir/fechar de propósito**. Já existiu animação via CSS (`data-state` + `@keyframes`), mas com diálogos aninhados (ex: "+ Novo cliente" dentro do formulário de orçamento) a Presence do Radix não desmontava de forma confiável em StrictMode, deixando o overlay preto travado cobrindo a tela (parecia a página ter travado/ficado em branco). Não reintroduzir animação de fechamento sem testar bem o caso de diálogo aninhado.
+
+## Netlify Blobs: armadilhas (já derrubaram o painel do EJ)
+Todo acesso ao Blobs passa por `storeBlobs()` em [lib/server/blobs.ts](lib/server/blobs.ts) — **nunca chamar `getStore` direto**. Ele entrega ao Blobs um `fetch` próprio que resolve três problemas:
+
+- **`res.body.cancel()` nunca termina no Netlify.** O Blobs descarta assim o corpo das respostas que não lê: 404 (chave ainda não existe — o primeiro acesso de um usuário novo), 412 (gravação condicional recusada — a numeração de contratos/recibos depende disso) e toda gravação. A função ficava presa até ser cortada (502). `semCorpoSeDescartavel()` ([lib/server/blobsFetch.ts](lib/server/blobsFetch.ts), testada) devolve essas respostas sem corpo; só GET 200 mantém o corpo.
+- **`fetch` do Next ≠ `fetch` do Node.** Usa `globalThis.fetch._nextOriginalFetch ?? globalThis.fetch`, resolvido a cada chamada; com a camada de cache do Next a leitura travava.
+- **Repetições silenciosas.** O Blobs repete chamadas com erro (5xx, 429, rede) esperando segundos entre tentativas. Cada etapa de rede das rotas passa por `comLimite()` (3 s; login do Identity incluído), e a falha vira 500 com a etapa que travou e a última resposta do Blobs (`respostaDeFalha`). A tela de carregamento mostra esse detalhe.
+- A conversão de PDF tem limite de 6 s: somada às etapas, a resposta precisa sair antes do corte de ~10 s da função.
 
 ## Deploy (Netlify)
 [netlify.toml](netlify.toml) usa o `@netlify/plugin-nextjs`, que transforma as rotas de servidor em Netlify Functions v2 — formato exigido pelo Identity. Única variável de ambiente: `GOTENBERG_URL` (e opcionalmente `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`), para os PDFs de contrato e recibo — ver "Contratos e recibos".
@@ -124,6 +150,9 @@ Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components
 **O Netlify roda `npm install` puro.** Um conflito de peer dependency derruba o deploy mesmo com o `package-lock.json` commitado; resolver localmente com `--legacy-peer-deps` só esconde o problema e o site fica num build antigo sem ninguém notar. Se `npm install` não passa limpo, não vai ao ar.
 
 No painel, é preciso ter **Identity habilitado** e decidir `Registration preferences` (`Open` / `Invite only`) e o `autoconfirm`. Os modelos de e-mail chegam em inglês por padrão — traduzir. Para conferir o estado sem abrir o painel: `https://SEU-SITE.netlify.app/.netlify/identity/settings` (404 = Identity desligado).
+
+## CI
+[.github/workflows/checks.yml](.github/workflows/checks.yml) roda `npm ci`, `typecheck`, `lint`, `test` e `build` em todo push e PR. O `npm ci` é de propósito: falha quando o `package-lock.json` está fora de sincronia com o `package.json` — exatamente o que derruba o build da Netlify e deixa o site num build antigo sem aviso. Preferir abrir PR e esperar o verde a empurrar direto em `main`, já que push em `main` publica em produção.
 
 ## Convenções
 - Nomes de campos/variáveis em português, comentários em português quando necessário
