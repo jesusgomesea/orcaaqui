@@ -111,6 +111,11 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
 - **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
 
+## Layout no celular
+- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), barra lateral fixa; no celular, topo compacto (marca, empresa, tema) e barra fixa embaixo com Painel, Orçamentos, Agenda, Clientes e "Mais" (Serviços, Empresa, Novidades, Sair). O `<main>` tem `pb-24` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
+- **Listas**: tabela só onde cabe — orçamentos em cartões até `xl` (a linha tem 8 ações); clientes, serviços e as tabelas do painel em cartões abaixo de `md`. As ações de um orçamento são uma função só (`acoes`) usada no cartão e na tabela.
+- **Diálogos** ([dialog.tsx](components/ui/dialog.tsx)): no celular ocupam a largura menos 0,75rem de cada lado, altura em `dvh` (desconta a barra do navegador) e `p-4`.
+
 ## Tema claro/escuro
 A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tema.ts)), inline no `<head>` do layout raiz, **antes da primeira pintura** — sem isso a página pisca clara para quem escolheu escuro. Por isso `tema.ts` não importa React: o layout raiz é Server Component.
 

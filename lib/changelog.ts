@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-05",
+    data: "2026-11-08",
+    tipo: "melhoria",
+    titulo: "Melhor no celular",
+    descricao:
+      "No celular, o menu virou uma barra fixa embaixo (Painel, Orçamentos, Agenda, Clientes e Mais), e o topo ficou compacto. Orçamentos, clientes, serviços e o painel aparecem em cartões, sem tabela espremida, e as janelas e o formulário de orçamento se ajustam à tela.",
+  },
+  {
     id: "2026-11-08-04",
     data: "2026-11-08",
     tipo: "novidade",

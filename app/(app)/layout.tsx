@@ -9,7 +9,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <StoreProvider>
         <div className="flex min-h-screen flex-col bg-bg text-text md:flex-row">
           <Sidebar />
-          <main className="mx-auto w-full max-w-[1220px] flex-1 p-5 md:p-8">{children}</main>
+          {/* pb-24 no celular: a navegação fixa de baixo não pode cobrir o fim da página. */}
+          <main className="mx-auto w-full min-w-0 max-w-[1220px] flex-1 px-4 pt-4 pb-24 md:p-8">{children}</main>
           {/* Container do documento impresso — ver gerarOrcamentoHtml. */}
           <div id="orcamento-print" className="hidden" />
         </div>

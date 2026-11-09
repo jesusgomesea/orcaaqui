@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           token no hash e podem cair em qualquer página.
         */}
         <ProvedorSessao>{children}</ProvedorSessao>
-        <Toaster position="bottom-right" richColors closeButton />
+        <Toaster position="bottom-right" richColors closeButton mobileOffset={{ bottom: 80 }} />
       </body>
     </html>
   );

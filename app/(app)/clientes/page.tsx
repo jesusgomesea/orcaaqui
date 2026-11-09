@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { Download, UploadCloud, FileSignature } from "lucide-react";
+import { Download, UploadCloud, FileSignature, Trash2 } from "lucide-react";
 import { ListaDocumentos } from "@/components/documentos/ListaDocumentos";
 import { useDocumentos } from "@/lib/documentosCliente";
 import { useStore } from "@/lib/store";
@@ -161,11 +161,33 @@ export default function ClientesPage() {
         </Button>
         <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportCsv} />
       </div>
-      <Card>
+      <Card className="p-0 md:p-5">
         {list.length === 0 ? (
           <EmptyState message="Nenhum cliente cadastrado ainda." />
         ) : (
-          <TableWrap>
+          <>
+          <ul className="divide-y divide-border md:hidden">
+            {list.map((c) => (
+              <li key={c.id} className="flex items-center gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-semibold text-text">{c.nome}</div>
+                  <div className="truncate text-[12px] text-text-muted">{[c.telefone, c.email].filter(Boolean).join(" · ") || "Sem contato"}</div>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  {contratosHabilitados && (
+                    <Button variant="secondary" size="sm" onClick={() => setDocumentosCliente(c)} title="Contratos e recibos" aria-label="Contratos e recibos">
+                      <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={() => openEditar(c)}>Editar</Button>
+                  <Button variant="danger" size="sm" onClick={() => handleExcluir(c)} aria-label={`Excluir ${c.nome}`}>
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <TableWrap className="hidden md:block">
             <Table>
               <Thead>
                 <tr>
@@ -197,6 +219,7 @@ export default function ClientesPage() {
               </tbody>
             </Table>
           </TableWrap>
+          </>
         )}
       </Card>
       <p className="mt-2.5 text-[11.5px] text-text-muted">
