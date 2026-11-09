@@ -15,7 +15,7 @@ import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
 import { gerarOrcamentoHtml, gerarTextoWhatsapp } from "@/lib/orcamento";
 import {
-  uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS, escapeHtml, logoSegura,
+  uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
   formatarNumeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
 } from "@/lib/helpers";
 import type {
