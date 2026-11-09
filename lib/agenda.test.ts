@@ -127,3 +127,29 @@ describe("agendamento", () => {
     ]);
   });
 });
+
+describe("resumo da agenda", async () => {
+  const { resumoAgenda } = await import("./agenda");
+  test("aguardando, próximos 30 dias e a receber", () => {
+    const o = (id: string, data: string, valor: number, pagos = 0): Orcamento =>
+      orcamento({
+        id,
+        itens: [{ id: "i", descricao: "X", quantidade: 1, valorUnitario: valor }],
+        servicoContrato: { servico: "", pacote: "", dataServico: data, horarioInicio: "", horarioFim: "", local: "", tempoCampo: "", fotosEditadas: "", personalizado: false, personalizadoHoras: 0, personalizadoFotos: 0, prazoEntrega: "" },
+        pagamentos: pagos ? [{ id: "p", tipo: "sinal", valor: pagos, data: "2026-11-01", forma: "Pix" }] : [],
+      });
+    const agora = new Date("2026-11-01T00:00:00Z");
+    const orcamentos = [o("o1", "2026-11-10", 200), o("o2", "2026-11-20", 300, 120), o("o3", "2027-03-01", 500), o("o4", "2026-11-15", 100)];
+    const ags = [
+      novoAgendamento(orcamentos[0], empresa, agora), // recebido → aguardando, não entra em "a receber"
+      { ...novoAgendamento(orcamentos[1], empresa, agora), etapa: "confirmado" }, // 300 - 120 = 180
+      { ...novoAgendamento(orcamentos[2], empresa, agora), etapa: "sinal_pago" }, // 500, fora dos 30 dias
+      { ...novoAgendamento(orcamentos[3], empresa, agora), etapa: "cancelado" },
+    ];
+    const r = resumoAgenda({ agendamentos: ags, orcamentos, clientes: [], config: empresa.config, moeda: "BRL" }, "2026-11-08");
+    expect(r.aguardando).toBe(1);
+    expect(r.proximos30).toBe(2);
+    expect(r.proximos.map((i) => i.orcamento?.id)).toEqual(["o1", "o2"]);
+    expect(r.aReceber).toBe(680);
+  });
+});

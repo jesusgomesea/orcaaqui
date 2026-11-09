@@ -16,7 +16,9 @@ import { useSessao } from "@/components/auth/ProvedorSessao";
 import { uuid, todayStr } from "./helpers";
 import { NOVIDADES } from "./changelog";
 import { codigoServicoLivre, defaultState, mergeEmpresa, mudouPreco, normalizar, subirVersaoCatalogo } from "./estado";
+import { agendarOrcamento, aprovarLeitura, type LeituraColada, type ResultadoAprovacao } from "./colar";
 import type {
+  Agendamento,
   Cliente,
   ConfigEmpresa,
   Empresa,
@@ -87,6 +89,12 @@ interface StoreValue {
   updateConfig: (patch: Partial<ConfigEmpresa>) => void;
   /** Aplica o % do sinal a todas as empresas da conta (orçamentos já criados mantêm o seu). */
   aplicarSinalATodas: (percentual: number) => void;
+  /** Colar orçamento: cliente + orçamento aprovado + agendamento (ver lib/colar.ts). */
+  aprovarColagem: (leitura: LeituraColada) => ResultadoAprovacao;
+  /** "Cliente aprovou → agendar" a partir de um orçamento salvo. */
+  agendarOrcamento: (orcamentoId: string) => { agendamentoId: string; jaExistia: boolean } | null;
+  updateAgendamento: (id: string, alterar: (a: Agendamento) => Agendamento) => void;
+  removeAgendamento: (id: string) => void;
   /**
    * Grava agora o que estiver pendente (sem esperar o debounce). Usado antes
    * de gerar contrato/recibo, porque o servidor lê os dados já gravados.
@@ -360,6 +368,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const empresaAtiva = state ? state.empresas.find((e) => e.id === state.empresaAtivaId) || state.empresas[0] : null;
 
+  // Aprovação e agendamento são calculados sobre a empresa ativa de agora (funções puras de
+  // lib/colar.ts) e gravados de uma vez — quem chama precisa dos ids criados na hora.
+  const aprovarColagem = useCallback(
+    (leitura: LeituraColada) => {
+      if (!empresaAtiva) throw new Error("Dados ainda não carregados.");
+      const r = aprovarLeitura(empresaAtiva, leitura);
+      patchEmpresaAtiva(() => r.empresa);
+      return r;
+    },
+    [empresaAtiva, patchEmpresaAtiva]
+  );
+  const agendarOrcamentoAtivo = useCallback(
+    (orcamentoId: string) => {
+      if (!empresaAtiva) return null;
+      const r = agendarOrcamento(empresaAtiva, orcamentoId);
+      if (!r) return null;
+      patchEmpresaAtiva(() => r.empresa);
+      return { agendamentoId: r.agendamentoId, jaExistia: r.jaExistia };
+    },
+    [empresaAtiva, patchEmpresaAtiva]
+  );
+  const updateAgendamento = useCallback(
+    (id: string, alterar: (a: Agendamento) => Agendamento) =>
+      patchEmpresaAtiva((e) => ({
+        ...e,
+        agendamentos: e.agendamentos.map((a) => (a.id === id ? { ...alterar(a), atualizadoEm: new Date().toISOString() } : a)),
+      })),
+    [patchEmpresaAtiva]
+  );
+  const removeAgendamento = useCallback(
+    (id: string) => patchEmpresaAtiva((e) => ({ ...e, agendamentos: e.agendamentos.filter((a) => a.id !== id) })),
+    [patchEmpresaAtiva]
+  );
+
   const value = useMemo<StoreValue | null>(
     () =>
       state && empresaAtiva
@@ -387,6 +429,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             garantirSalvo,
             updateConfig,
             aplicarSinalATodas,
+            aprovarColagem,
+            agendarOrcamento: agendarOrcamentoAtivo,
+            updateAgendamento,
+            removeAgendamento,
           }
         : null,
     [
@@ -395,6 +441,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addOrcamento, updateOrcamento, removeOrcamento,
       addServico, updateServico, removeServico,
       marcarNovidadesVistas, garantirSalvo, updateConfig, aplicarSinalATodas,
+      aprovarColagem, agendarOrcamentoAtivo, updateAgendamento, removeAgendamento,
     ]
   );
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Users, Settings, Wrench, Bell, LogOut, CloudOff, RefreshCw } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Settings, Wrench, Bell, LogOut, CloudOff, RefreshCw, CalendarDays } from "lucide-react";
 import { logout } from "@netlify/identity";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import BotaoTema from "./BotaoTema";
 const ITEMS = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard },
   { href: "/orcamentos", label: "Orçamentos", icon: FileText },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/servicos", label: "Serviços", icon: Wrench },
   { href: "/empresa", label: "Empresa", icon: Settings },

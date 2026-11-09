@@ -8,6 +8,7 @@ Gerador de orçamentos com conta própria. Você entra com e-mail e senha, e seu
 - Dados salvos automaticamente na sua conta, acessíveis de qualquer dispositivo
 - Múltiplas empresas na mesma conta, cada uma com seus próprios clientes/orçamentos/serviços
 - Catálogo de serviços com preço padrão, preço por volume e prazo
+- Agenda: cole a mensagem aprovada (ou um clique em "Cliente aprovou → agendar") e acompanhe etapas, pagamentos, sinal e restante
 - Gerador de orçamento: monta pelo catálogo, mostra total, sinal e restante e envia pelo WhatsApp (com a tabela do EJ Fotografia como opção)
 - Suporte a múltiplas moedas (padrão por empresa, ajustável por orçamento)
 - Gráfico de faturamento (orçado x aprovado) no Painel
