@@ -62,6 +62,12 @@ export interface Pagamento {
 
 export interface Orcamento {
   id: string;
+  /**
+   * Número sequencial por empresa, gravado na criação e imutável depois. Já foi
+   * derivado da posição no array, o que renumerava todos os posteriores a cada
+   * exclusão — o cliente ficava com um PDF cujo número não existia mais aqui.
+   */
+  numero: number;
   criadoEm: string;
   clienteId: string;
   data: string;
@@ -118,6 +124,8 @@ export interface Empresa {
   orcamentos: Orcamento[];
   servicos: Servico[];
   prestador?: Prestador;
+  /** Contador monotônico de `Orcamento.numero`. Nunca reaproveita número de excluído. */
+  proximoNumero: number;
 }
 
 export type TipoDocumento = "contrato" | "recibo";

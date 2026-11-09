@@ -1,0 +1,4 @@
+# Normaliza a quebra de linha no repositório (LF), independente de quem commita
+# de Windows ou de Unix — sem isso um mesmo arquivo aparece inteiro no diff só
+# por ter sido salvo em outra máquina.
+* text=auto eol=lf

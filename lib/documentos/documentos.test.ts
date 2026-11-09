@@ -98,6 +98,7 @@ const cliente: Cliente = {
 function orcamentoBase(patch: Partial<Orcamento> = {}): Orcamento {
   return {
     id: "o1",
+    numero: 1,
     criadoEm: "2026-11-01",
     clienteId: "c1",
     data: "2026-11-01",
