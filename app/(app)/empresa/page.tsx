@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { readFileAsDataUrl, downloadFile, todayStr, MOEDAS } from "@/lib/helpers";
-import type { CodigoMoeda, Empresa, EstadoImportado } from "@/lib/tipos";
+import { cpfValido, formatarCpf, formatarTelefone, telefoneValido } from "@/lib/documentos/formatos";
+import type { CodigoMoeda, Empresa, EstadoImportado, Prestador } from "@/lib/tipos";
 
 function EmpresasSection() {
   const { state, empresaAtiva, addEmpresa, removeEmpresa, switchEmpresa } = useStore();
@@ -113,6 +114,92 @@ function ContaSection() {
             <KeyRound className="h-4 w-4" strokeWidth={1.8} /> {salvando ? "Salvando…" : "Trocar senha"}
           </Button>
         </div>
+      </fieldset>
+    </Card>
+  );
+}
+
+const PRESTADOR_VAZIO: Prestador = {
+  habilitado: false,
+  nome: "",
+  cpf: "",
+  endereco: "",
+  whatsapp: "",
+  email: "",
+  pix: "",
+  modeloVersao: "",
+};
+
+/**
+ * Dados civis usados em contratos e recibos (podem diferir do nome fantasia).
+ * Desligado, a empresa não vê nada de contratos — os modelos são da EJ Fotografia.
+ */
+function PrestadorSection() {
+  const { empresaAtiva, updateEmpresaAtiva } = useStore();
+  const p = { ...PRESTADOR_VAZIO, ...empresaAtiva.prestador };
+  const set = (patch: Partial<Prestador>) => updateEmpresaAtiva({ prestador: { ...p, ...patch } });
+
+  const avisoCpf = p.cpf && !cpfValido(p.cpf) ? "CPF inválido." : "";
+  const avisoWhats = p.whatsapp && !telefoneValido(p.whatsapp) ? "Use o formato (00) 00000-0000." : "";
+
+  return (
+    <Card className="mb-5">
+      <fieldset>
+        <legend className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Contratos e recibos</legend>
+        <label className="mb-3 flex cursor-pointer items-start gap-2.5 text-[13.5px] text-text">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-primary"
+            checked={p.habilitado}
+            onChange={(e) => set({ habilitado: e.target.checked })}
+          />
+          <span>
+            Gerar contrato e recibo a partir dos orçamentos
+            <span className="block text-[12px] text-text-muted">
+              Usa os modelos de contrato de prestação de serviços fotográficos e de recibo. Os dados abaixo alimentam todos os documentos.
+            </span>
+          </span>
+        </label>
+
+        {p.habilitado && (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label>Nome civil completo *</Label>
+                <Input value={p.nome} onChange={(e) => set({ nome: e.target.value })} />
+              </div>
+              <div>
+                <Label>CPF *</Label>
+                <Input value={p.cpf} onChange={(e) => set({ cpf: e.target.value })} onBlur={() => p.cpf && set({ cpf: formatarCpf(p.cpf) })} placeholder="000.000.000-00" />
+                {avisoCpf && <p className="mt-1 text-[11.5px] text-danger">{avisoCpf}</p>}
+              </div>
+              <div>
+                <Label>WhatsApp *</Label>
+                <Input value={p.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} onBlur={() => p.whatsapp && set({ whatsapp: formatarTelefone(p.whatsapp) })} placeholder="(00) 00000-0000" />
+                {avisoWhats && <p className="mt-1 text-[11.5px] text-danger">{avisoWhats}</p>}
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Endereço completo *</Label>
+                <Input value={p.endereco} onChange={(e) => set({ endereco: e.target.value })} placeholder="Rua X, 123, Bairro, Teresina/PI" />
+              </div>
+              <div>
+                <Label>E-mail *</Label>
+                <Input type="email" value={p.email} onChange={(e) => set({ email: e.target.value })} />
+              </div>
+              <div>
+                <Label>Chave Pix *</Label>
+                <Input value={p.pix} onChange={(e) => set({ pix: e.target.value })} placeholder="E-mail ou chave aleatória" />
+              </div>
+              <div>
+                <Label>Versão atual do modelo *</Label>
+                <Input value={p.modeloVersao} onChange={(e) => set({ modeloVersao: e.target.value })} placeholder="v3 — nov/2026" />
+              </div>
+            </div>
+            <p className="mt-3 text-[11.5px] text-text-muted">
+              Ao trocar o arquivo do modelo de contrato, atualize a versão: ela sai impressa no contrato e fica registrada em cada documento gerado.
+            </p>
+          </>
+        )}
       </fieldset>
     </Card>
   );
@@ -270,6 +357,8 @@ export default function ConfigPage() {
           </div>
         </fieldset>
       </Card>
+
+      <PrestadorSection />
 
       <Card>
         <fieldset>

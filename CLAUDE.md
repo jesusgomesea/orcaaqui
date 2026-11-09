@@ -11,7 +11,8 @@ Deixar qualquer prestador de serviço montar um orçamento com a cara da própri
 - Netlify Identity (`@netlify/identity`) para login; Netlify Blobs (`@netlify/blobs`) para os dados
 - Radix UI primitives (dialog, select, tabs) + `class-variance-authority` + `lucide-react`
 - `sonner` para toasts, `recharts` pro gráfico de faturamento
-- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`)
+- `oxlint` para lint (`npm run lint`), `tsc --noEmit` para tipos (`npm run typecheck`), `node --test` para as regras de documentos (`npm test`)
+- `docxtemplater` + `pizzip` para preencher os modelos de contrato/recibo; Gotenberg (externo) para .docx → PDF
 
 ## Rodar localmente
 **Precisa de `netlify dev`, não `next dev`.** O endpoint `/.netlify/identity` vem do runtime da Netlify: com `next dev` puro, `getUser()` devolve `null` e as mutações lançam `MissingIdentityError`. O script `dev:next` existe só pra mexer em layout/CSS sem tocar em auth.
@@ -55,8 +56,10 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
       desconto, descontoTipo /* "valor" | "percentual" */, acrescimo,
       condicoes, observacoes,
       status /* rascunho | enviado | aprovado | recusado */,
+      servicoContrato?, pagamentos?: [{ id, tipo /* sinal | restante | integral */, valor, data, forma }],
     }],
     servicos: [{ id, categoria, nome, descricao, valor }],
+    prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
   }],
   novidadesVistoId: string | null,
 }
@@ -99,11 +102,24 @@ O React só espelha esse estado, via `useSyncExternalStore` em [lib/useTema.ts](
 ## Geração de PDF
 Não usa lib de PDF (jsPDF/html2canvas) — usa `window.print()` sobre um container escondido (`#orcamento-print` no layout de `(app)`) com CSS `@media print` em [globals.css](app/globals.css) que esconde o resto da página. O HTML do orçamento é montado inline (estilos inline com cores claras fixas, não Tailwind) em `gerarOrcamentoHtml` dentro de `app/(app)/orcamentos/page.tsx`, porque esse HTML vira o documento impresso/PDF: precisa ser autocontido e não pode herdar o tema escuro da tela. Ao mudar o layout do orçamento impresso, editar essa função — não o JSX da página.
 
+## Contratos e recibos (.docx → PDF)
+Gera o contrato de prestação de serviços fotográficos e o recibo de pagamento a partir dos modelos em [templates/](templates/) (EJ Fotografia). Liga por empresa em Empresa → "Contratos e recibos" (`empresa.prestador.habilitado`); desligado, nenhuma tela mostra nada de contratos.
+
+- **O texto jurídico mora só nos modelos.** Não copiar cláusulas para o código nem editar o texto dos .docx por aqui. Mudou o contrato: trocar o arquivo em `templates/` e atualizar a "versão do modelo" na tela do prestador. Os marcadores são `{{campo}}`, cada um inteiro num único `<w:t>`; o dicionário de campos sai de [lib/documentos/campos.ts](lib/documentos/campos.ts).
+- **Anexo I nunca é pré-preenchido**: o modelo só tem nome, CPF e data do serviço como marcadores; as caixas ☐ ficam para o cliente (há teste cobrindo).
+- **Fluxo**: o navegador chama `garantirSalvo()` do store (fura o debounce) e depois `POST /api/documentos/contrato` ou `/recibo`. O servidor ([lib/server/gerarDocumentos.ts](lib/server/gerarDocumentos.ts)) **lê os dados já gravados**, valida (422 com `faltando: string[]`), faz uma prévia com número provisório, só então reserva o número, preenche com `docxtemplater` ([lib/documentos/preencher.ts](lib/documentos/preencher.ts)), confere que não sobrou `{{` em nenhuma parte do .docx e converte.
+- **Armazenamento fora do estado principal** ([lib/server/documentos.ts](lib/server/documentos.ts), store `orcaaqui-documentos`): o navegador regrava o estado inteiro a cada alteração, então qualquer registro do servidor dentro dele seria apagado. Índice e contadores usam gravação condicional do Blobs (`onlyIfMatch`/`onlyIfNew`) em laço de nova tentativa — é o que impede número duplicado com duas gerações simultâneas. Arquivos gravam com `onlyIfNew`: nada é sobrescrito.
+- **Numeração**: `NNN/AAAA` por empresa, sequências separadas de contrato e recibo, reinicia no ano (fuso de Teresina, `America/Fortaleza`). Cada geração — inclusive "nova versão" — consome um número novo; número reservado e não usado (falha na conversão) não volta.
+- **PDF via Gotenberg** ([lib/server/pdf.ts](lib/server/pdf.ts)): a Netlify não roda LibreOffice nas Functions. Variáveis de ambiente `GOTENBERG_URL` e, se o Gotenberg tiver basic auth, `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`. Sem `GOTENBERG_URL` o documento sai em .docx e a tela avisa. A imagem do Gotenberg precisa ter Georgia e Calibri (ou Carlito, de mesma métrica), senão a paginação muda.
+- **LGPD**: CPF nunca em URL nem em nome de arquivo (`Contrato 001-2026 - Ana Souza.pdf`); download só em `GET /api/documentos/arquivo/<id>`, atrás de `getUser()`, com a chave do arquivo sob o id do usuário.
+- **Regras puras com teste** em `lib/documentos/` (sinal de 40% arredondado para cima em reais, valor e data por extenso, CPF/telefone, montagem dos campos). Rodar `npm test` (`node --test`, sem dependência extra). Os imports entre arquivos dessa pasta levam `.ts` (`allowImportingTsExtensions`) para o Node executá-los direto; `import type` de fora da pasta é apagado e não pesa.
+- Os modelos entram no pacote da função por `outputFileTracingIncludes` em [next.config.ts](next.config.ts).
+
 ## Diálogos (Radix)
 Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components/ui/dialog.tsx) **não têm animação de abrir/fechar de propósito**. Já existiu animação via CSS (`data-state` + `@keyframes`), mas com diálogos aninhados (ex: "+ Novo cliente" dentro do formulário de orçamento) a Presence do Radix não desmontava de forma confiável em StrictMode, deixando o overlay preto travado cobrindo a tela (parecia a página ter travado/ficado em branco). Não reintroduzir animação de fechamento sem testar bem o caso de diálogo aninhado.
 
 ## Deploy (Netlify)
-[netlify.toml](netlify.toml) usa o `@netlify/plugin-nextjs`, que transforma as rotas de servidor em Netlify Functions v2 — formato exigido pelo Identity. Sem variáveis de ambiente.
+[netlify.toml](netlify.toml) usa o `@netlify/plugin-nextjs`, que transforma as rotas de servidor em Netlify Functions v2 — formato exigido pelo Identity. Única variável de ambiente: `GOTENBERG_URL` (e opcionalmente `GOTENBERG_USUARIO`/`GOTENBERG_SENHA`), para os PDFs de contrato e recibo — ver "Contratos e recibos".
 
 **O Netlify roda `npm install` puro.** Um conflito de peer dependency derruba o deploy mesmo com o `package-lock.json` commitado; resolver localmente com `--legacy-peer-deps` só esconde o problema e o site fica num build antigo sem ninguém notar. Se `npm install` não passa limpo, não vai ao ar.
 

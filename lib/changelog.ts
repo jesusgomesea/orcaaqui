@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-08-01",
+    data: "2026-11-08",
+    tipo: "novidade",
+    titulo: "Contrato e recibo gerados a partir do orçamento",
+    descricao:
+      "Em Empresa → Contratos e recibos, ative a geração e preencha seus dados de prestador. No orçamento aprovado, o botão de contrato gera o PDF com os dados do cliente e do serviço, e cada pagamento registrado ganha o seu recibo. Tudo fica no histórico do orçamento e do cliente; gerar de novo cria uma nova versão sem apagar a anterior.",
+  },
+  {
     id: "2026-09-10-01",
     data: "2026-09-10",
     tipo: "novidade",

@@ -143,6 +143,12 @@ interface StoreValue {
   updateServico: (id: string, patch: Partial<Servico>) => void;
   removeServico: (id: string) => void;
   marcarNovidadesVistas: () => void;
+  /**
+   * Grava agora o que estiver pendente (sem esperar o debounce). Usado antes
+   * de gerar contrato/recibo, porque o servidor lê os dados já gravados.
+   * Devolve false se a gravação falhar.
+   */
+  garantirSalvo: () => Promise<boolean>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -162,7 +168,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const ultimoSalvo = useRef<string | null>(null);
   const pendente = useRef<EstadoApp | null>(null);
 
-  const salvar = useCallback(async (estado: EstadoApp) => {
+  const salvar = useCallback(async (estado: EstadoApp): Promise<boolean> => {
     const corpo = JSON.stringify(estado);
     setStatusSincronizacao("salvando");
     try {
@@ -175,11 +181,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ultimoSalvo.current = corpo;
       pendente.current = null;
       setStatusSincronizacao("ocioso");
+      return true;
     } catch (e) {
       console.error("Não foi possível salvar os dados na sua conta.", e);
       setStatusSincronizacao("erro");
+      return false;
     }
   }, []);
+
+  // `pendente` já guarda o estado ainda não gravado (o efeito do debounce o
+  // preenche a cada alteração); vazio = nada a salvar.
+  const garantirSalvo = useCallback(async () => {
+    const estado = pendente.current;
+    if (!estado) return true;
+    return salvar(estado);
+  }, [salvar]);
 
   // Carga inicial: busca o estado da conta; se ainda não existir, sobe o que
   // houver neste navegador (migração de quem usava a versão sem login).
@@ -384,6 +400,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             updateServico,
             removeServico,
             marcarNovidadesVistas,
+            garantirSalvo,
           }
         : null,
     [
@@ -391,7 +408,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCliente, addClientes, updateCliente, removeCliente,
       addOrcamento, updateOrcamento, removeOrcamento,
       addServico, updateServico, removeServico,
-      marcarNovidadesVistas,
+      marcarNovidadesVistas, garantirSalvo,
     ]
   );
 
@@ -403,6 +420,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // Falso positivo: `value` carrega `garantirSalvo`, que lê `pendente.current`,
+  // mas só quando chamado num clique — nunca durante a renderização.
+  // oxlint-disable-next-line react/refs
   if (!value) {
     return (
       <div className="flex min-h-screen items-center justify-center">

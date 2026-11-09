@@ -12,6 +12,7 @@ Gerador de orçamentos com conta própria. Você entra com e-mail e senha, e seu
 - Gráfico de faturamento (orçado x aprovado) no Painel
 - Importar/exportar clientes em CSV
 - PDF via impressão do navegador (com logo e cor da empresa) e envio por WhatsApp
+- Contrato e recibo em PDF gerados a partir do orçamento (modelos .docx em `templates/`), com histórico de versões
 - Tema claro e escuro
 - Página de Novidades com o histórico de atualizações
 
@@ -43,7 +44,7 @@ npm run build
 5. **Identity → Emails**: traduza os modelos de confirmação e recuperação, que chegam em inglês
 6. Pronto — a cada push, a Netlify builda e publica automaticamente
 
-Não precisa de variáveis de ambiente. Para conferir se o Identity está no ar: `https://SEU-SITE.netlify.app/.netlify/identity/settings` (404 significa que ainda não foi habilitado).
+Para contratos e recibos em PDF, configure `GOTENBERG_URL` (URL de um [Gotenberg](https://gotenberg.dev) seu; com basic auth, também `GOTENBERG_USUARIO` e `GOTENBERG_SENHA`). Sem ela, os documentos saem em .docx. Para conferir se o Identity está no ar: `https://SEU-SITE.netlify.app/.netlify/identity/settings` (404 significa que ainda não foi habilitado).
 
 ## Vindo da versão sem login?
 
