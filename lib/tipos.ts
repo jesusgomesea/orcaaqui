@@ -16,11 +16,48 @@ export interface Cliente {
   observacoes: string;
 }
 
+/** `adicional` entra na lista de adicionais do contrato (com valor); ausente = item principal. */
+export type TipoItem = "principal" | "adicional";
+
 export interface ItemOrcamento {
   id: string;
   descricao: string;
   quantidade: number;
   valorUnitario: number;
+  tipo?: TipoItem;
+}
+
+/**
+ * Dados do serviço que alimentam o contrato. Opcional: orçamentos antigos não
+ * têm e continuam abrindo — só a geração do contrato fica bloqueada.
+ */
+export interface ServicoContrato {
+  servico: string;
+  pacote: string;
+  /** YYYY-MM-DD */
+  dataServico: string;
+  /** HH:MM */
+  horarioInicio: string;
+  /** HH:MM; vazio = sem fim definido ("—" no contrato) */
+  horarioFim: string;
+  local: string;
+  tempoCampo: string;
+  fotosEditadas: string;
+  personalizado: boolean;
+  personalizadoHoras: number;
+  personalizadoFotos: number;
+  prazoEntrega: string;
+}
+
+export type TipoPagamento = "sinal" | "restante" | "integral";
+
+export interface Pagamento {
+  id: string;
+  tipo: TipoPagamento;
+  valor: number;
+  /** YYYY-MM-DD */
+  data: string;
+  forma: string;
 }
 
 export interface Orcamento {
@@ -37,6 +74,8 @@ export interface Orcamento {
   condicoes: string;
   observacoes: string;
   status: StatusOrcamento;
+  servicoContrato?: ServicoContrato;
+  pagamentos?: Pagamento[];
 }
 
 export interface Servico {
@@ -45,6 +84,21 @@ export interface Servico {
   nome: string;
   descricao: string;
   valor: number;
+}
+
+/**
+ * Dados civis do prestador para contratos e recibos (podem diferir do nome
+ * fantasia da empresa). `habilitado` liga a geração de documentos na empresa.
+ */
+export interface Prestador {
+  habilitado: boolean;
+  nome: string;
+  cpf: string;
+  endereco: string;
+  whatsapp: string;
+  email: string;
+  pix: string;
+  modeloVersao: string;
 }
 
 export interface Empresa {
@@ -63,6 +117,33 @@ export interface Empresa {
   clientes: Cliente[];
   orcamentos: Orcamento[];
   servicos: Servico[];
+  prestador?: Prestador;
+}
+
+export type TipoDocumento = "contrato" | "recibo";
+
+/**
+ * Registro de um documento gerado. Mora no Netlify Blobs, fora do estado
+ * principal (ver lib/server/documentos.ts) — nunca é sobrescrito.
+ */
+export interface DocumentoGerado {
+  id: string;
+  tipo: TipoDocumento;
+  /** NNN/AAAA */
+  numero: string;
+  /** Versão dentro do orçamento (contrato) ou do pagamento (recibo). */
+  versao: number;
+  modeloVersao: string;
+  /** ISO 8601 */
+  geradoEm: string;
+  /** YYYY-MM-DD, no fuso de Teresina */
+  dataGeracao: string;
+  empresaId: string;
+  orcamentoId: string;
+  clienteId: string;
+  pagamentoId?: string;
+  formato: "pdf" | "docx";
+  nomeArquivo: string;
 }
 
 export interface EstadoApp {

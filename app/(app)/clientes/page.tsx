@@ -2,7 +2,9 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { Download, UploadCloud } from "lucide-react";
+import { Download, UploadCloud, FileSignature } from "lucide-react";
+import { ListaDocumentos } from "@/components/documentos/ListaDocumentos";
+import { useDocumentos } from "@/lib/documentosCliente";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,21 @@ import { todayStr, downloadFile, clientesParaCsv, csvParaClientes } from "@/lib/
 import type { Cliente } from "@/lib/tipos";
 
 type ClienteForm = Omit<Cliente, "id"> & { id?: string; _isEdit: boolean };
+
+/** Histórico de contratos e recibos de um cliente, em todos os orçamentos dele. */
+function DocumentosDoCliente({ clienteId }: { clienteId: string }) {
+  const { empresaAtiva } = useStore();
+  const { documentos, carregando, erro } = useDocumentos(empresaAtiva.id);
+  if (carregando) return <p className="text-[12.5px] text-text-muted">Carregando histórico…</p>;
+  if (erro) return <p className="text-[12.5px] text-danger">{erro}</p>;
+  return (
+    <ListaDocumentos
+      documentos={documentos.filter((d) => d.clienteId === clienteId)}
+      vazio="Nenhum contrato ou recibo gerado para este cliente."
+      mostrarTipo
+    />
+  );
+}
 
 function clienteVazio(): Omit<Cliente, "id"> {
   return { nome: "", documento: "", telefone: "", email: "", endereco: "", observacoes: "" };
@@ -81,6 +98,9 @@ export default function ClientesPage() {
   const [modalCliente, setModalCliente] = useState<ClienteForm | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const [documentosCliente, setDocumentosCliente] = useState<Cliente | null>(null);
+  const contratosHabilitados = !!empresaAtiva.prestador?.habilitado;
 
   const list = [...empresaAtiva.clientes].sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -163,6 +183,11 @@ export default function ClientesPage() {
                     <Td>{c.email || "-"}</Td>
                     <Td className="whitespace-nowrap">
                       <div className="flex justify-end gap-1.5">
+                        {contratosHabilitados && (
+                          <Button variant="secondary" size="sm" onClick={() => setDocumentosCliente(c)} title="Contratos e recibos">
+                            <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
+                          </Button>
+                        )}
                         <Button variant="secondary" size="sm" onClick={() => openEditar(c)}>Editar</Button>
                         <Button variant="danger" size="sm" onClick={() => handleExcluir(c)}>Excluir</Button>
                       </div>
@@ -181,6 +206,17 @@ export default function ClientesPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           {modalCliente && <ClienteForm cliente={modalCliente} onSave={handleSave} onCancel={() => setModalOpen(false)} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!documentosCliente} onOpenChange={(aberto) => !aberto && setDocumentosCliente(null)}>
+        <DialogContent>
+          {documentosCliente && (
+            <>
+              <DialogTitle>Contratos e recibos — {documentosCliente.nome}</DialogTitle>
+              <DocumentosDoCliente clienteId={documentosCliente.id} />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

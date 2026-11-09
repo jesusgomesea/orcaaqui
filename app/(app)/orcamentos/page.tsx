@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, MessageCircle, Printer, Copy } from "lucide-react";
+import { Plus, Trash2, MessageCircle, Printer, Copy, FileSignature } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,60 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
+import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
 import {
   uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
   numeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
 } from "@/lib/helpers";
 import type {
-  Cliente, CodigoMoeda, DescontoTipo, Empresa, ItemOrcamento, Orcamento, Servico, StatusOrcamento,
+  Cliente, CodigoMoeda, DescontoTipo, Empresa, ItemOrcamento, Orcamento, Servico, ServicoContrato, StatusOrcamento,
 } from "@/lib/tipos";
+
+function servicoContratoVazio(): ServicoContrato {
+  return {
+    servico: "", pacote: "", dataServico: "", horarioInicio: "", horarioFim: "", local: "",
+    tempoCampo: "", fotosEditadas: "", personalizado: false, personalizadoHoras: 0, personalizadoFotos: 0, prazoEntrega: "",
+  };
+}
+
+/** Campos do serviço usados no contrato. Só aparece com contratos habilitados na empresa. */
+function DadosServicoFieldset({ valor, onChange }: { valor: ServicoContrato; onChange: (v: ServicoContrato) => void }) {
+  const set = (patch: Partial<ServicoContrato>) => onChange({ ...valor, ...patch });
+  return (
+    <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
+      <legend className="px-1.5 text-xs font-semibold text-text-muted">Dados do serviço (contrato)</legend>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div><Label>Serviço</Label><Input value={valor.servico} onChange={(e) => set({ servico: e.target.value })} placeholder="Ensaio ao ar livre" /></div>
+        <div><Label>Pacote</Label><Input value={valor.pacote} onChange={(e) => set({ pacote: e.target.value })} placeholder="Padrão" /></div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div><Label>Data do serviço</Label><Input type="date" value={valor.dataServico} onChange={(e) => set({ dataServico: e.target.value })} /></div>
+        <div><Label>Início</Label><Input type="time" value={valor.horarioInicio} onChange={(e) => set({ horarioInicio: e.target.value })} /></div>
+        <div><Label>Término (opcional)</Label><Input type="time" value={valor.horarioFim} onChange={(e) => set({ horarioFim: e.target.value })} /></div>
+        <div><Label>Prazo de entrega</Label><Input value={valor.prazoEntrega} onChange={(e) => set({ prazoEntrega: e.target.value })} placeholder="Em até 24h" /></div>
+      </div>
+      <div className="mt-3"><Label>Local(is)</Label><Input value={valor.local} onChange={(e) => set({ local: e.target.value })} placeholder="Parque Potycabana" /></div>
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] text-text">
+        <input type="checkbox" className="h-4 w-4 accent-primary" checked={valor.personalizado} onChange={(e) => set({ personalizado: e.target.checked })} />
+        Pacote Personalizado (horas e quantidade exata de fotos)
+      </label>
+      {valor.personalizado ? (
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <div><Label>Horas</Label><Input type="number" min="0" step="0.5" value={valor.personalizadoHoras || ""} onChange={(e) => set({ personalizadoHoras: Number(e.target.value) || 0 })} /></div>
+          <div><Label>Fotos editadas</Label><Input type="number" min="0" step="1" value={valor.personalizadoFotos || ""} onChange={(e) => set({ personalizadoFotos: Number(e.target.value) || 0 })} /></div>
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <div><Label>Tempo em campo</Label><Input value={valor.tempoCampo} onChange={(e) => set({ tempoCampo: e.target.value })} placeholder="1h" /></div>
+          <div><Label>Fotos editadas (faixa)</Label><Input value={valor.fotosEditadas} onChange={(e) => set({ fotosEditadas: e.target.value })} placeholder="30–40" /></div>
+        </div>
+      )}
+      <p className="mt-2 text-[11.5px] text-text-muted">
+        Marque como &quot;Adicional&quot; os itens que entram na lista de adicionais do contrato. O valor total do contrato é o total do orçamento.
+      </p>
+    </fieldset>
+  );
+}
 
 type OrcamentoForm = Omit<Orcamento, "id" | "criadoEm"> & { id?: string; criadoEm?: string; _isEdit: boolean };
 
@@ -45,6 +92,7 @@ function OrcamentoForm({
   onNovoCliente,
   clientes,
   servicos,
+  contratos,
 }: {
   orcamento: OrcamentoForm;
   onSave: (dados: OrcamentoForm) => void;
@@ -52,6 +100,7 @@ function OrcamentoForm({
   onNovoCliente: (aoSalvar: (novo: Cliente) => void) => void;
   clientes: Cliente[];
   servicos: Servico[];
+  contratos: boolean;
 }) {
   const [f, setF] = useState(orcamento);
   // Força a remontagem do seletor de serviço: ele é um "gatilho", não um campo
@@ -144,6 +193,12 @@ function OrcamentoForm({
                 )}
                 <div className="w-16"><Input type="number" min="0" step="1" title="Quantidade" value={it.quantidade} onChange={(e) => setItem(it.id, { quantidade: Number(e.target.value) || 0 })} /></div>
                 <div className="w-28"><Input type="number" min="0" step="0.01" title="Valor unitário" value={it.valorUnitario} onChange={(e) => setItem(it.id, { valorUnitario: Number(e.target.value) || 0 })} /></div>
+                {contratos && (
+                  <label className="flex h-9 shrink-0 cursor-pointer items-center gap-1 text-[12px] text-text-muted" title="Aparece na lista de adicionais do contrato">
+                    <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={it.tipo === "adicional"} onChange={(e) => setItem(it.id, { tipo: e.target.checked ? "adicional" : undefined })} />
+                    Adicional
+                  </label>
+                )}
                 <div className="flex h-9 flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), f.moeda)}</div>
                 <button type="button" onClick={() => removeItem(it.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger-tint hover:text-danger cursor-pointer">
                   <Trash2 className="h-4 w-4" strokeWidth={1.8} />
@@ -183,6 +238,13 @@ function OrcamentoForm({
         <div className="mt-2 flex justify-end text-[13px] text-text-muted">Subtotal: {formatMoney(subtotal, f.moeda)}</div>
         <div className="mt-1 flex justify-end text-[17px] font-bold text-text">Total: {formatMoney(total, f.moeda)}</div>
       </fieldset>
+
+      {contratos && (
+        <DadosServicoFieldset
+          valor={{ ...servicoContratoVazio(), ...f.servicoContrato }}
+          onChange={(servicoContrato) => set({ servicoContrato })}
+        />
+      )}
 
       <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
         <legend className="px-1.5 text-xs font-semibold text-text-muted">Condições e observações</legend>
@@ -323,6 +385,10 @@ export default function OrcamentosPage() {
   const [modalOrcamento, setModalOrcamento] = useState<OrcamentoForm | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCliente, setModalCliente] = useState<{ onSaved: (novo: Cliente) => void } | null>(null);
+  const [documentosId, setDocumentosId] = useState<string | null>(null);
+  const contratosHabilitados = !!empresaAtiva.prestador?.habilitado;
+  // Lido do store a cada render: pagamentos registrados no diálogo aparecem na hora.
+  const orcamentoDocumentos = documentosId ? empresaAtiva.orcamentos.find((o) => o.id === documentosId) : undefined;
 
   const clienteNome = (id: string) => empresaAtiva.clientes.find((c) => c.id === id)?.nome || "(cliente removido)";
 
@@ -340,7 +406,8 @@ export default function OrcamentosPage() {
   };
 
   const handleDuplicar = (o: Orcamento) => {
-    const { id: _id, criadoEm: _criadoEm, ...campos } = o;
+    // Pagamentos são do orçamento original: a cópia começa sem nenhum.
+    const { id: _id, criadoEm: _criadoEm, pagamentos: _pagamentos, ...campos } = o;
     addOrcamento({ ...campos, data: todayStr(), status: "rascunho", itens: campos.itens.map((it) => ({ ...it, id: uuid() })) });
     toast.success("Orçamento duplicado.");
   };
@@ -403,6 +470,11 @@ export default function OrcamentosPage() {
                           <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o, index)} title="Enviar por WhatsApp">
                             <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
                           </Button>
+                          {contratosHabilitados && (
+                            <Button variant="secondary" size="sm" onClick={() => setDocumentosId(o.id)} title="Contrato e recibos">
+                              <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
+                            </Button>
+                          )}
                           <Button variant="secondary" size="sm" onClick={() => handleDuplicar(o)} title="Duplicar">
                             <Copy className="h-3.5 w-3.5" strokeWidth={1.8} />
                           </Button>
@@ -425,10 +497,24 @@ export default function OrcamentosPage() {
               orcamento={modalOrcamento}
               clientes={empresaAtiva.clientes}
               servicos={empresaAtiva.servicos}
+              contratos={contratosHabilitados}
               onSave={handleSave}
               onCancel={() => setModalOpen(false)}
               onNovoCliente={(onSaved) => setModalCliente({ onSaved })}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!orcamentoDocumentos} onOpenChange={(aberto) => !aberto && setDocumentosId(null)}>
+        <DialogContent className="max-w-[720px]">
+          {orcamentoDocumentos && (
+            <>
+              <DialogTitle>
+                Contrato e recibos — {numeroOrcamento(empresaAtiva.orcamentos, empresaAtiva.orcamentos.findIndex((x) => x.id === orcamentoDocumentos.id))} · {clienteNome(orcamentoDocumentos.clienteId)}
+              </DialogTitle>
+              <DocumentosOrcamento orcamento={orcamentoDocumentos} />
+            </>
           )}
         </DialogContent>
       </Dialog>
