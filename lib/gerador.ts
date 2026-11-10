@@ -7,7 +7,7 @@
 
 import { addDaysStr, formatDateBR, formatMoney } from "./helpers";
 import { calcularSinal, paraCentavos } from "./documentos/formatos";
-import type { CodigoMoeda, ConfigEmpresa, Empresa, ItemOrcamento, Orcamento, Servico, UnidadeServico } from "./tipos";
+import type { CodigoMoeda, ConfigEmpresa, Empresa, ItemOrcamento, Orcamento, Servico, ServicoContrato, UnidadeServico } from "./tipos";
 
 export const UNIDADES: { id: UnidadeServico; nome: string }[] = [
   { id: "un", nome: "Unidade" },
@@ -162,6 +162,75 @@ export function itensDoCalculo(calc: CalculoGerador, novoId: () => string): Item
     ...(l.servicoId ? { servicoId: l.servicoId } : {}),
     ...(l.deslocamentoId ? { deslocamentoId: l.deslocamentoId, tipo: "adicional" as const } : {}),
   }));
+}
+
+const numeroBr = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+
+/**
+ * Dados do serviço para o contrato a partir dos itens do catálogo: serviço
+ * (categorias), pacote (os itens), tempo em campo (soma das unidades em hora
+ * e dia), fotos editadas (soma das unidades em foto) e prazo de entrega (os
+ * prazos dos serviços). Só devolve o que conseguiu derivar; itens livres e
+ * deslocamento ficam de fora.
+ */
+export function servicoContratoDosItens(
+  itens: Pick<ItemOrcamento, "servicoId" | "quantidade" | "descricao">[],
+  servicos: Servico[]
+): Partial<ServicoContrato> {
+  const linhas = itens
+    .map((it) => ({ it, s: it.servicoId ? servicos.find((x) => x.id === it.servicoId) : undefined }))
+    .filter((l): l is { it: (typeof itens)[number]; s: Servico } => !!l.s && (Number(l.it.quantidade) || 0) > 0);
+  if (!linhas.length) return {};
+
+  const unicos = (lista: string[]) => [...new Set(lista.map((x) => x.trim()).filter(Boolean))];
+  const soma = (u: string) => linhas.filter((l) => (l.s.unidade ?? "un") === u).reduce((t, l) => t + (Number(l.it.quantidade) || 0), 0);
+
+  const categorias = unicos(linhas.map((l) => l.s.categoria));
+  const nomes = linhas.map((l) => {
+    const q = Number(l.it.quantidade) || 0;
+    const nome = l.s.nome.trim() || l.it.descricao.trim();
+    // Em hora/foto/dia a quantidade já aparece no tempo e nas fotos.
+    return q > 1 && (l.s.unidade ?? "un") === "un" ? `${q}× ${nome}` : nome;
+  });
+
+  const horas = soma("hora");
+  const dias = soma("dia");
+  const fotos = soma("foto");
+  const tempo = [dias ? `${numeroBr(dias)} ${dias === 1 ? "dia" : "dias"}` : "", horas ? `${numeroBr(horas)}h` : ""].filter(Boolean);
+  const prazos = unicos(linhas.map((l) => l.s.prazo ?? ""));
+
+  const r: Partial<ServicoContrato> = {};
+  const servico = categorias.length ? categorias.join(", ") : unicos(nomes).join(", ");
+  if (servico) r.servico = servico;
+  const pacote = unicos(nomes).join(" + ");
+  if (pacote) r.pacote = pacote;
+  if (tempo.length) r.tempoCampo = tempo.join(" + ");
+  if (fotos) r.fotosEditadas = numeroBr(fotos);
+  if (prazos.length) r.prazoEntrega = prazos.join(" · ");
+  return r;
+}
+
+type CampoDerivado = "servico" | "pacote" | "tempoCampo" | "fotosEditadas" | "prazoEntrega";
+const CAMPOS_DERIVADOS: CampoDerivado[] = ["servico", "pacote", "tempoCampo", "fotosEditadas", "prazoEntrega"];
+
+/**
+ * Aplica os dados derivados dos itens sem passar por cima do que a pessoa
+ * digitou: um campo só muda se está vazio ou ainda é igual ao que os itens
+ * anteriores davam (`anterior`). Assim trocar os itens no montador atualiza
+ * pacote/prazo, mas um prazo editado à mão no formulário fica.
+ */
+export function aplicarServicoDosItens(
+  atual: ServicoContrato,
+  anterior: Partial<ServicoContrato>,
+  novo: Partial<ServicoContrato>
+): ServicoContrato {
+  const r = { ...atual };
+  for (const k of CAMPOS_DERIVADOS) {
+    const valor = (r[k] ?? "").trim();
+    if (valor && valor !== (anterior[k] ?? "").trim()) continue;
+    r[k] = novo[k] ?? "";
+  }
+  return r;
 }
 
 /**

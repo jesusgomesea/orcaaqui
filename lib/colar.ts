@@ -8,7 +8,7 @@
 
 import { novoAgendamento, totalDoOrcamento } from "./agenda";
 import { extrairRefEj, itensDoRecalculoEj, type RecalculoEj } from "./ej";
-import { decodificarRefOrc, itensDoCalculo, recalcularRefOrc } from "./gerador";
+import { decodificarRefOrc, itensDoCalculo, recalcularRefOrc, servicoContratoDosItens } from "./gerador";
 import { formatarNumeroOrcamento, formatMoney, todayStr, uuid } from "./helpers";
 import { acharClientePorTelefone, servicoContratoVazio } from "./orcamento";
 import type { CodigoMoeda, Empresa, ItemOrcamento, OrigemOrcamento, ServicoContrato } from "./tipos";
@@ -157,7 +157,8 @@ export function lerColagemOrc(texto: string, empresa: Empresa): ResultadoColagem
     total: r.calculo.total,
     totalNoTexto: leg.totalNoTexto,
     sinalPercentual: pct,
-    servicoContrato: r.calculo.prazos.length ? { prazoEntrega: r.calculo.prazos.join(" · ") } : {},
+    // Serviço, pacote, tempo, fotos e prazo para o contrato, pelos itens do catálogo.
+    servicoContrato: servicoContratoDosItens(itensDoCalculo(r.calculo, () => ""), empresa.servicos),
     existenteId,
     avisos: [],
     pendencias: r.calculo.pendencias,

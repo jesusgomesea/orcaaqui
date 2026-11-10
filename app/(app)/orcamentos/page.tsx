@@ -21,7 +21,10 @@ import { EditorParceria } from "@/components/parceria/EditorParceria";
 import { textoParceria } from "@/lib/parceria";
 import { limparImpressaoDocx } from "@/lib/documentosImpressao";
 import { MontadorOrcamento } from "@/components/gerador/MontadorOrcamento";
-import { calculoDoOrcamento, gerarMensagemOrcamento, linkWhatsApp, refDaSelecao, selecaoDoOrcamento } from "@/lib/gerador";
+import {
+  aplicarServicoDosItens, calculoDoOrcamento, gerarMensagemOrcamento, linkWhatsApp, refDaSelecao, selecaoDoOrcamento,
+  servicoContratoDosItens,
+} from "@/lib/gerador";
 import { percentualSinal } from "@/lib/agenda";
 import { gerarOrcamentoHtml, gerarTextoWhatsapp, servicoContratoVazio } from "@/lib/orcamento";
 import {
@@ -340,6 +343,16 @@ export default function OrcamentosPage() {
 
   const handleSave = (dados: OrcamentoForm) => {
     const { _isEdit, id, ...campos } = dados;
+    if (contratosHabilitados) {
+      // Itens do catálogo completam serviço/pacote/tempo/fotos/prazo do contrato,
+      // sem passar por cima do que foi digitado no "Dados do serviço".
+      const antes = _isEdit && id ? empresaAtiva.orcamentos.find((o) => o.id === id) : undefined;
+      campos.servicoContrato = aplicarServicoDosItens(
+        { ...servicoContratoVazio(), ...campos.servicoContrato },
+        servicoContratoDosItens(antes?.itens ?? [], empresaAtiva.servicos),
+        servicoContratoDosItens(campos.itens, empresaAtiva.servicos)
+      );
+    }
     if (_isEdit && id) updateOrcamento(id, campos);
     else addOrcamento(campos);
     setModalOpen(false);
