@@ -10,12 +10,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Input, Textarea, Label } from "@/components/ui/input";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { todayStr, downloadFile, clientesParaCsv, csvParaClientes } from "@/lib/helpers";
 import type { Cliente } from "@/lib/tipos";
+import { ClienteForm, type ClienteFormDados } from "@/components/clientes/ClienteForm";
 
-type ClienteForm = Omit<Cliente, "id"> & { id?: string; _isEdit: boolean };
 
 /** Histórico de contratos e recibos de um cliente, em todos os orçamentos dele. */
 function DocumentosDoCliente({ clienteId }: { clienteId: string }) {
@@ -36,66 +35,9 @@ function clienteVazio(): Omit<Cliente, "id"> {
   return { nome: "", documento: "", telefone: "", email: "", endereco: "", observacoes: "" };
 }
 
-function ClienteForm({
-  cliente,
-  onSave,
-  onCancel,
-}: {
-  cliente: ClienteForm;
-  onSave: (dados: ClienteForm) => void;
-  onCancel: () => void;
-}) {
-  const [f, setF] = useState(cliente);
-  const set = (patch: Partial<ClienteForm>) => setF((p) => ({ ...p, ...patch }));
-
-  const handleSave = () => {
-    if (!f.nome.trim()) {
-      toast.error("Informe o nome do cliente.");
-      return;
-    }
-    onSave(f);
-  };
-
-  return (
-    <>
-      <DialogTitle>{cliente._isEdit ? "Editar" : "Novo"} cliente</DialogTitle>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Label>Nome *</Label>
-          <Input value={f.nome} onChange={(e) => set({ nome: e.target.value })} autoFocus />
-        </div>
-        <div>
-          <Label>CPF/CNPJ</Label>
-          <Input value={f.documento} onChange={(e) => set({ documento: e.target.value })} />
-        </div>
-        <div>
-          <Label>Telefone/WhatsApp</Label>
-          <Input value={f.telefone} onChange={(e) => set({ telefone: e.target.value })} />
-        </div>
-        <div>
-          <Label>E-mail</Label>
-          <Input type="email" value={f.email} onChange={(e) => set({ email: e.target.value })} />
-        </div>
-        <div>
-          <Label>Endereço</Label>
-          <Input value={f.endereco} onChange={(e) => set({ endereco: e.target.value })} />
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Observações</Label>
-          <Textarea rows={2} value={f.observacoes} onChange={(e) => set({ observacoes: e.target.value })} />
-        </div>
-      </div>
-      <div className="mt-5 flex justify-end gap-2">
-        <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
-        <Button onClick={handleSave}>Salvar</Button>
-      </div>
-    </>
-  );
-}
-
 export default function ClientesPage() {
   const { empresaAtiva, addCliente, addClientes, updateCliente, removeCliente } = useStore();
-  const [modalCliente, setModalCliente] = useState<ClienteForm | null>(null);
+  const [modalCliente, setModalCliente] = useState<ClienteFormDados | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,7 +49,7 @@ export default function ClientesPage() {
   const openNovo = () => { setModalCliente({ ...clienteVazio(), _isEdit: false }); setModalOpen(true); };
   const openEditar = (c: Cliente) => { setModalCliente({ ...c, _isEdit: true }); setModalOpen(true); };
 
-  const handleSave = (dados: ClienteForm) => {
+  const handleSave = (dados: ClienteFormDados) => {
     const { _isEdit, id, ...campos } = dados;
     if (_isEdit && id) updateCliente(id, campos);
     else addCliente(campos);

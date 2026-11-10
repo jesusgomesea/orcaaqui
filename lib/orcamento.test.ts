@@ -161,3 +161,25 @@ describe("cliente por telefone", async () => {
     expect(acharClientePorTelefone([{ ...cliente, telefone: "" }], "")).toBeUndefined();
   });
 });
+
+describe("clientes parecidos (cadastro repetido)", async () => {
+  const { clientesParecidos, nomeComparavel } = await import("./orcamento");
+  const base: Cliente = { id: "c1", nome: "Ana Souza", documento: "", telefone: "(86) 98888-7777", email: "", endereco: "", observacoes: "" };
+
+  test("mesmo nome (sem acento/caixa) ou mesmo WhatsApp; nunca o próprio", () => {
+    const clientes: Cliente[] = [
+      base,
+      { ...base, id: "c2", nome: "  ana   souza ", telefone: "" },
+      { ...base, id: "c3", nome: "Ana Paula", telefone: "5586988887777" },
+      { ...base, id: "c4", nome: "Ânia Souza", telefone: "(86) 91111-2222" },
+      { ...base, id: "c5", nome: "Bruno", telefone: "" },
+    ];
+    expect(clientesParecidos(clientes, base).map((c) => c.id)).toEqual(["c2", "c3"]);
+    expect(nomeComparavel("Ânia  Souza")).toBe("ania souza");
+  });
+
+  test("telefone curto demais não conta como igual", () => {
+    const clientes: Cliente[] = [{ ...base, telefone: "123" }, { ...base, id: "c2", nome: "Outro", telefone: "123" }];
+    expect(clientesParecidos(clientes, clientes[0])).toEqual([]);
+  });
+});

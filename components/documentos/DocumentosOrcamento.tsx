@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { ListaDocumentos } from "./ListaDocumentos";
+import { ClienteDoContrato } from "./ClienteDoContrato";
 import { ErroDocumento, gerarContrato, gerarRecibo, useDocumentos } from "@/lib/documentosCliente";
 import { imprimirDocumento } from "@/lib/documentosImpressao";
 import { PAGAMENTO_LABEL, valorSugerido } from "@/lib/documentos/campos";
@@ -111,6 +112,8 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
 
   return (
     <div className="space-y-4">
+      <ClienteDoContrato orcamento={orcamento} />
+
       <section className="rounded-2xl border border-border p-3.5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-1.5 text-[14px] font-semibold text-text">

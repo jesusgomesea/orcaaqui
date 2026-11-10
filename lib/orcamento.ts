@@ -19,6 +19,24 @@ export function telefoneComparavel(tel: string): string {
   return (d.length === 12 || d.length === 13) && d.startsWith("55") ? d.slice(2) : d;
 }
 
+/** Nome para comparar: sem acento, sem caixa e com espaços normalizados. */
+export function nomeComparavel(nome: string): string {
+  return nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Outros cadastros que parecem a mesma pessoa (mesmo nome ou mesmo telefone).
+ * O montador cria um cliente novo quando o WhatsApp não bate com nenhum, então
+ * é comum completar o CPF num cadastro e o orçamento estar ligado a outro.
+ */
+export function clientesParecidos(clientes: Cliente[], cliente: Cliente): Cliente[] {
+  const nome = nomeComparavel(cliente.nome);
+  const tel = telefoneComparavel(cliente.telefone);
+  return clientes.filter(
+    (c) => c.id !== cliente.id && ((nome && nomeComparavel(c.nome) === nome) || (tel.length >= 8 && telefoneComparavel(c.telefone) === tel))
+  );
+}
+
 /** Cliente com o mesmo telefone (dedupe ao criar pelo gerador ou ao colar). */
 export function acharClientePorTelefone(clientes: Cliente[], telefone: string): Cliente | undefined {
   const alvo = telefoneComparavel(telefone);
