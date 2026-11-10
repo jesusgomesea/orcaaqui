@@ -331,3 +331,16 @@ test("recibo — pagamento do tipo outro não gera recibo", () => {
   });
   expect(faltando.some((f) => f.includes("sinal, restante ou integral"))).toBe(true);
 });
+
+test("contrato — CPF com 11 números passa mesmo se os dígitos verificadores não conferirem", () => {
+  const gerar = (documento: string) =>
+    montarCamposContrato({
+      prestador, cliente: { ...cliente, documento }, orcamento: orcamentoBase(), numero: "001/2026", dataGeracao: "2026-11-09",
+    });
+  const conferencia = gerar("529.982.247-24");
+  assert.deepEqual(conferencia.faltando, []);
+  assert.equal(conferencia.campos.cliente_cpf, "529.982.247-24");
+  // Incompleto ou CNPJ continua barrando, dizendo o motivo.
+  assert.match(gerar("529.982.247").faltando.join(), /CPF do cliente com 11 números \(tem 9 números/);
+  assert.match(gerar("12.345.678/0001-95").faltando.join(), /CNPJ/);
+});

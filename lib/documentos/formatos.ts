@@ -81,6 +81,16 @@ export function cpfValido(cpf: string): boolean {
   return cpfNormalizado(cpf) !== null;
 }
 
+/**
+ * CPF que basta para gerar contrato e recibo: o que confere, ou qualquer um com
+ * 11 números. A conferência dos dígitos verificadores NÃO bloqueia — decisão do
+ * dono do produto, depois de um CPF verdadeiro ser recusado. Só avisa (ver
+ * `motivoCpfInvalido`).
+ */
+export function cpfAceito(cpf: string): boolean {
+  return cpfValido(cpf) || somenteDigitos(cpf).length === 11;
+}
+
 /** Por que o CPF não passa — para a tela dizer o que conferir. Vazio = válido. */
 export function motivoCpfInvalido(cpf: string): string {
   const d = somenteDigitos(cpf);
@@ -89,7 +99,7 @@ export function motivoCpfInvalido(cpf: string): string {
   if (d.length === 14) return "parece um CNPJ (14 números); o contrato pede o CPF da pessoa";
   if (d.length !== 11) return `tem ${d.length} números; o CPF tem 11`;
   if (/^(\d)\1{10}$/.test(d)) return "todos os números iguais";
-  return "os 2 últimos números (dígitos verificadores) não conferem — algum número pode estar trocado";
+  return "os 2 últimos números (dígitos verificadores) não conferem; o contrato sai assim mesmo, mas vale conferir se não há número trocado";
 }
 
 /** 000.000.000-00 (devolve o texto original se não for um CPF válido nem tiver 11 dígitos). */

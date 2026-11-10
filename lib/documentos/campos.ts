@@ -6,7 +6,7 @@ import { calcOrcamentoTotais } from "../helpers";
 import { dataPorExtenso, valorPorExtenso } from "./extenso";
 import {
   calcularSinal,
-  cpfValido,
+  cpfAceito,
   emailValido,
   formatarCpf,
   formatarData,
@@ -68,7 +68,7 @@ function camposPrestador(p: Prestador | undefined, faltando: string[], completo:
   const cpf = texto(p?.cpf);
   exigir(faltando, nome, "Nome completo do prestador (Empresa → Contratos e recibos)");
   if (!cpf) faltando.push("CPF do prestador");
-  else if (!cpfValido(cpf)) faltando.push(`CPF do prestador válido (${motivoCpfInvalido(cpf)})`);
+  else if (!cpfAceito(cpf)) faltando.push(`CPF do prestador com 11 números (${motivoCpfInvalido(cpf)})`);
 
   const campos: Campos = { prestador_nome: nome, prestador_cpf: formatarCpf(cpf) };
   if (!completo) return campos;
@@ -103,7 +103,7 @@ function camposCliente(c: Cliente | undefined, faltando: string[], completo: boo
   const cpf = texto(c.documento);
   exigir(faltando, nome, "Nome completo do cliente");
   if (!cpf) faltando.push("CPF do cliente");
-  else if (!cpfValido(cpf)) faltando.push(`CPF do cliente válido (${motivoCpfInvalido(cpf)})`);
+  else if (!cpfAceito(cpf)) faltando.push(`CPF do cliente com 11 números (${motivoCpfInvalido(cpf)})`);
 
   const campos: Campos = { cliente_nome: nome, cliente_cpf: formatarCpf(cpf) };
   if (!completo) return campos;

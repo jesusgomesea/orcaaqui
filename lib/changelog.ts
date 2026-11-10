@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-10-03",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "CPF não trava mais o contrato",
+    descricao:
+      "Para gerar contrato e recibo, basta o CPF ter 11 números. Se os dígitos verificadores não conferirem, o app só avisa para você conferir — o contrato sai do mesmo jeito.",
+  },
+  {
     id: "2026-11-10-02",
     data: "2026-11-10",
     tipo: "melhoria",
