@@ -14,6 +14,7 @@ import { linkWhatsApp } from "@/lib/gerador";
 import {
   buscarCatalogoEj,
   codificarRefEj,
+  decodificarRefEj,
   gerarMensagemEj,
   itensDoRecalculoEj,
   novoCodigoEj,
@@ -51,7 +52,8 @@ export function MontadorEj({
 
   const [catalogo, setCatalogo] = useState<CatalogoEj | null>(null);
   const [erroCatalogo, setErroCatalogo] = useState("");
-  const [sel, setSel] = useState<SelecaoEj>(() => selecaoEjVazia("ensaio"));
+  // Reabrir um orçamento feito aqui volta com a mesma escolha (lida da [ref] gravada).
+  const [sel, setSel] = useState<SelecaoEj>(() => (existente?.refEj && decodificarRefEj(existente.refEj)) || selecaoEjVazia("ensaio"));
   // Reaproveita o código EJ de um orçamento que já veio daqui; senão, gera um.
   const [codigo] = useState(() => (existente?.codigoRef?.startsWith("EJ-") ? existente.codigoRef : novoCodigoEj()));
   const [emitidoEm] = useState(() => existente?.data || todayStr());
@@ -160,6 +162,7 @@ export function MontadorEj({
       },
       origem: "gerador",
       codigoRef: codigo,
+      refEj: linhaRef,
       sinalPercentual: atual.sinalPercentual,
     };
     const status = enviar && (!existente || existente.status === "rascunho") ? "enviado" : existente?.status ?? "rascunho";
@@ -184,7 +187,7 @@ export function MontadorEj({
   };
 
   if (erroCatalogo) {
-    return <p className="rounded-lg border border-danger-border bg-danger-tint p-3 text-[13px] text-danger">{erroCatalogo}</p>;
+    return <p className="rounded-2xl border border-danger-border bg-danger-tint p-3 text-[13px] text-danger">{erroCatalogo}</p>;
   }
   if (!catalogo) return <p className="text-[13px] text-text-muted">Carregando a tabela do EJ…</p>;
 
@@ -205,7 +208,7 @@ export function MontadorEj({
       <div className="space-y-4">
         {blocoCliente}
 
-        <fieldset className="rounded-lg border border-border p-3.5">
+        <fieldset className="rounded-2xl border border-border p-3.5">
           <legend className="px-1.5 text-xs font-semibold text-text-muted">Tabela do EJ · v{catalogo.versao}</legend>
           <div className="mb-3 flex flex-wrap gap-1.5">
             {catalogo.categorias.filter((c) => !c.legado).map((c) => (
@@ -215,7 +218,7 @@ export function MontadorEj({
                 onClick={() => trocarCategoria(c.id)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-[12.5px] font-medium cursor-pointer",
-                  sel.categoria === c.id ? "border-primary bg-primary-tint text-primary" : "border-border text-text-muted hover:text-text"
+                  sel.categoria === c.id ? "border-primary bg-primary-tint text-primary-texto" : "border-border text-text-muted hover:text-text"
                 )}
               >
                 {c.nome}
@@ -231,8 +234,8 @@ export function MontadorEj({
                     type="button"
                     onClick={() => escolherPacote(p.id)}
                     className={cn(
-                      "w-full rounded-lg border p-2.5 text-left cursor-pointer",
-                      sel.pacoteId === p.id ? "border-primary bg-primary-tint" : "border-border hover:bg-bg"
+                      "w-full rounded-2xl border p-2.5 text-left cursor-pointer",
+                      sel.pacoteId === p.id ? "border-primary bg-primary-tint" : "border-border hover:bg-surface-2"
                     )}
                   >
                     <div className="flex justify-between gap-2 text-[13px] font-semibold text-text">
@@ -317,7 +320,7 @@ export function MontadorEj({
       </div>
 
       <aside className="md:sticky md:top-0 md:self-start">
-        <div className="rounded-lg border border-border bg-bg p-3.5 text-[13px]">
+        <div className="rounded-2xl border border-border bg-bg p-3.5 text-[13px]">
           <div className="mb-2 font-semibold text-text">Resumo · {codigo}</div>
           {!podeCalcular && <p className="text-text-muted">Escolha um pacote.</p>}
           {podeCalcular && calculando && !atual && <p className="text-text-muted">Calculando pela tabela do EJ…</p>}

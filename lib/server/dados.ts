@@ -14,25 +14,46 @@ function store() {
   return storeBlobs(NOME_DA_STORE);
 }
 
-export async function lerEstado(usuarioId: string): Promise<EstadoApp | null> {
-  const bruto = await comLimite(
-    "Leitura dos dados (Netlify Blobs)",
-    store().get(`usuario/${usuarioId}.json`, { type: "json" })
-  );
-  return (bruto as EstadoApp | null) ?? null;
+const chave = (usuarioId: string) => `usuario/${usuarioId}.json`;
+
+export interface EstadoLido {
+  estado: EstadoApp | null;
+  /** Etag do blob lido — a "versão" que o navegador devolve ao salvar. null = conta nova. */
+  versao: string | null;
 }
 
-export async function gravarEstado(usuarioId: string, estado: EstadoApp): Promise<void> {
-  await comLimite("Gravação dos dados (Netlify Blobs)", store().setJSON(`usuario/${usuarioId}.json`, estado));
+export async function lerEstado(usuarioId: string): Promise<EstadoLido> {
+  const lido = await comLimite(
+    "Leitura dos dados (Netlify Blobs)",
+    store().getWithMetadata(chave(usuarioId), { type: "json" })
+  );
+  if (!lido) return { estado: null, versao: null };
+  return { estado: (lido.data as EstadoApp | null) ?? null, versao: lido.etag ?? null };
 }
+
+export type ResultadoGravacao = { ok: true; versao: string | null } | { ok: false };
 
 /**
- * O corpo vem do navegador do próprio dono dos dados, então não há nada a
- * proteger de outro usuário aqui — a checagem existe pra não gravar lixo que
- * quebraria a leitura seguinte (e para barrar payload absurdo).
+ * Grava só se o blob ainda for a versão que o navegador carregou (`onlyIfMatch`
+ * com o etag) — ou, numa conta nova, só se ninguém criou antes (`onlyIfNew`).
+ * Sem isso, o celular e o computador abertos ao mesmo tempo se sobrescreviam:
+ * quem salvava por último apagava, sem aviso, o que o outro tinha gravado.
  */
-export function estadoValido(valor: unknown): valor is EstadoApp {
-  if (typeof valor !== "object" || valor === null) return false;
-  const e = valor as Partial<EstadoApp>;
-  return Array.isArray(e.empresas) && e.empresas.length > 0 && typeof e.empresaAtivaId === "string";
+export async function gravarEstadoSeIgual(
+  usuarioId: string,
+  estado: EstadoApp,
+  versaoBase: string | null
+): Promise<ResultadoGravacao> {
+  const s = store();
+  const r = await comLimite(
+    "Gravação dos dados (Netlify Blobs)",
+    versaoBase ? s.setJSON(chave(usuarioId), estado, { onlyIfMatch: versaoBase }) : s.setJSON(chave(usuarioId), estado, { onlyIfNew: true })
+  );
+  if (!r.modified) return { ok: false };
+  if (r.etag) return { ok: true, versao: r.etag };
+  // Algumas respostas não trazem o etag novo: pega pelos metadados.
+  const meta = await comLimite("Leitura da versão (Netlify Blobs)", s.getMetadata(chave(usuarioId)));
+  return { ok: true, versao: meta?.etag ?? null };
 }
+
+export { estadoValido, lerCorpoDoPut } from "./dadosValidacao";

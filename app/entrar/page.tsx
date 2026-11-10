@@ -79,14 +79,14 @@ export default function EntrarPage() {
         modo === "entrar" ? (
           <>
             Não tem conta?{" "}
-            <button type="button" onClick={() => trocarModo("cadastrar")} className="font-semibold text-primary hover:underline cursor-pointer">
+            <button type="button" onClick={() => trocarModo("cadastrar")} className="font-semibold text-primary-texto hover:underline cursor-pointer">
               Criar agora
             </button>
           </>
         ) : (
           <>
             Já tem conta?{" "}
-            <button type="button" onClick={() => trocarModo("entrar")} className="font-semibold text-primary hover:underline cursor-pointer">
+            <button type="button" onClick={() => trocarModo("entrar")} className="font-semibold text-primary-texto hover:underline cursor-pointer">
               Entrar
             </button>
           </>

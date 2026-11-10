@@ -14,7 +14,7 @@ import type { EtapaAgenda, FaixaDeslocamento } from "@/lib/tipos";
 
 const legenda = "mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-text-muted";
 const botaoIcone =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-bg hover:text-text cursor-pointer disabled:opacity-40 disabled:pointer-events-none";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-2 hover:text-text cursor-pointer disabled:opacity-40 disabled:pointer-events-none";
 
 /** Id novo e curto (vai na [ref] como ds=), que não repete os existentes. */
 function idNovo(existentes: string[]): string {

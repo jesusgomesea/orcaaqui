@@ -31,7 +31,7 @@ export default function RecuperarSenhaPage() {
     <MolduraAuth
       titulo="Recuperar senha"
       descricao={enviado ? undefined : "Enviamos um link para você criar uma senha nova."}
-      rodape={<Link href="/entrar" className="font-semibold text-primary hover:underline">Voltar para entrar</Link>}
+      rodape={<Link href="/entrar" className="font-semibold text-primary-texto hover:underline">Voltar para entrar</Link>}
     >
       {enviado ? (
         <p className="text-[13px] text-text-muted">

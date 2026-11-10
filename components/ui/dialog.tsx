@@ -17,13 +17,13 @@ function DialogContent({
 }: ComponentProps<typeof DialogPrimitive.Content> & { showClose?: boolean }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
       <DialogPrimitive.Content
         className={cn(
           // Celular: margem nas laterais, altura do viewport visível (dvh desconta a
           // barra do navegador) e menos respiro interno.
           "dialog-content z-50 w-[calc(100%-1.5rem)] max-w-[560px]",
-          "max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-4 shadow-[var(--shadow-lg)]",
+          "max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-[var(--radius-cartao)] border border-border bg-surface p-5 shadow-[var(--shadow-lg)]",
           "sm:max-h-[calc(100dvh-5rem)] sm:p-6",
           className
         )}
@@ -41,7 +41,7 @@ function DialogContent({
 }
 
 function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("mb-4 pr-7 text-[16.5px] font-bold text-text", className)} {...props} />;
+  return <DialogPrimitive.Title className={cn("mb-4 pr-8 text-[18px] font-semibold tracking-tight text-text", className)} {...props} />;
 }
 
 const DialogTrigger = DialogPrimitive.Trigger;

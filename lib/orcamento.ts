@@ -123,14 +123,16 @@ export function gerarTextoWhatsapp(o: Orcamento, cliente: Cliente | undefined, n
   const validoAte = addDaysStr(o.data, o.validadeDias);
   const itens = o.itens.filter((it) => it.descricao.trim())
     .map((it) => `• ${it.descricao} (${it.quantidade}x ${formatMoney(it.valorUnitario, moeda)})`).join("\n");
-  return [
-    `*Orçamento ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`,
-    cliente ? `Cliente: ${cliente.nome}` : "",
-    "",
-    itens,
-    "",
-    `*Total: ${formatMoney(total, moeda)}*`,
-    `Válido até ${formatDateBR(validoAte)}`,
-    o.condicoes ? `\n${o.condicoes}` : "",
-  ].filter(Boolean).join("\n");
+  // Blocos separados por linha em branco. Antes um `.filter(Boolean)` apagava
+  // também as linhas vazias de separação, e a mensagem chegava toda grudada.
+  const blocos = [
+    [`*Orçamento ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`, cliente ? `Cliente: ${cliente.nome}` : ""],
+    [itens],
+    [`*Total: ${formatMoney(total, moeda)}*`, `Válido até ${formatDateBR(validoAte)}`],
+    [o.condicoes.trim()],
+  ];
+  return blocos
+    .map((linhas) => linhas.filter(Boolean).join("\n"))
+    .filter(Boolean)
+    .join("\n\n");
 }

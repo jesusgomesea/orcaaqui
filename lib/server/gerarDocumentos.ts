@@ -40,7 +40,7 @@ export class ErroGeracao extends Error {
 const NUMERO_PROVISORIO = (ano: number) => `000/${ano}`;
 
 async function carregar(uid: string, empresaId: string, orcamentoId: string) {
-  const estado = await lerEstado(uid);
+  const { estado } = await lerEstado(uid);
   const empresa: Empresa | undefined = estado?.empresas.find((e) => e.id === empresaId);
   if (!empresa) throw new ErroGeracao("Empresa não encontrada.", 404);
   if (!empresa.prestador?.habilitado) {

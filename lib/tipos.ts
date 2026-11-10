@@ -97,6 +97,8 @@ export interface Orcamento {
    * `EJ-XXXXX` (colado do site do EJ Fotografia).
    */
   codigoRef?: string;
+  /** Linha `[ref EJ-…]` inteira do orçamento feito pela tabela do EJ: reabre no montador com a mesma escolha. */
+  refEj?: string;
   /** % do sinal combinado neste orçamento; ausente = o da empresa (`config.sinalPercentual`). */
   sinalPercentual?: number;
   origem?: OrigemOrcamento;

@@ -14,7 +14,7 @@ function Th({ className, ...props }: ComponentProps<"th">) {
   return <th className={cn("px-3 py-2 font-semibold", className)} {...props} />;
 }
 function Tr({ className, ...props }: ComponentProps<"tr">) {
-  return <tr className={cn("border-b border-border last:border-0 hover:bg-bg", className)} {...props} />;
+  return <tr className={cn("border-b border-border last:border-0 hover:bg-surface-2/50", className)} {...props} />;
 }
 function Td({ className, ...props }: ComponentProps<"td">) {
   return <td className={cn("px-3 py-2.5 text-text", className)} {...props} />;

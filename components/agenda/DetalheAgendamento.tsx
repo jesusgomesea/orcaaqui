@@ -91,7 +91,7 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
         {o && <span>{o.codigoRef && o.codigoRef.startsWith("EJ-") ? `${o.codigoRef} · ` : ""}{formatarNumeroOrcamento(o.numero)}</span>}
         <span>{nomeEtapa(a.etapa, etapas)}</span>
         {cliente?.telefone && (
-          <a className="inline-flex items-center gap-1 text-primary hover:underline" href={linkWhatsApp(cliente.telefone, "")} target="_blank" rel="noopener noreferrer">
+          <a className="inline-flex items-center gap-1 text-primary-texto hover:underline" href={linkWhatsApp(cliente.telefone, "")} target="_blank" rel="noopener noreferrer">
             <MessageCircle className="h-3.5 w-3.5" /> {cliente.telefone}
           </a>
         )}
@@ -109,7 +109,7 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
               title={e.descricao}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12.5px] font-medium cursor-pointer disabled:cursor-default disabled:opacity-50",
-                i === atual ? "border-primary bg-primary text-white" : i < atual ? "border-success bg-success-tint text-success" : "border-border text-text-muted hover:text-text"
+                i === atual ? "border-primary bg-primary text-sobre-primary" : i < atual ? "border-success bg-success-tint text-success" : "border-border text-text-muted hover:text-text"
               )}
             >
               {i < atual && <Check className="h-3 w-3" />} {e.nome}
@@ -143,7 +143,7 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
       )}
 
       {/* Valores */}
-      <section className="mb-4 rounded-lg border border-border p-3.5 text-[13px]">
+      <section className="mb-4 rounded-2xl border border-border p-3.5 text-[13px]">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label>Valor combinado (opcional)</Label>
@@ -207,7 +207,7 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
 
       {/* Pagamentos (os mesmos do orçamento e dos recibos) */}
       {o && (
-        <section className="mb-4 rounded-lg border border-border p-3.5 text-[13px]">
+        <section className="mb-4 rounded-2xl border border-border p-3.5 text-[13px]">
           <div className="mb-1.5 font-semibold text-text">Pagamentos</div>
           {pagamentos.length === 0 && <p className="text-[12.5px] text-text-muted">Nenhum pagamento ainda.</p>}
           <ul className="space-y-1">

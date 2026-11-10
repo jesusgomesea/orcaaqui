@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Marca } from "@/components/marca/Marca";
 import {
   ArrowRight,
   Building2,
@@ -107,9 +108,7 @@ export default function Landing() {
     <div className="min-h-screen bg-bg text-text">
       <header className="sticky top-0 z-10 border-b border-border bg-surface/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1100px] items-center justify-between gap-3 px-5">
-          <span className="text-[17px] font-bold">
-            Orça <span className="text-primary">Aqui</span>
-          </span>
+          <Marca />
           <div className="flex items-center gap-2">
             <BotaoTema />
             {logado ? (
@@ -135,12 +134,12 @@ export default function Landing() {
       <main>
         {/* Hero */}
         <section className="mx-auto w-full max-w-[1100px] px-5 py-16 text-center md:py-24">
-          <span className="inline-block rounded-full border border-border bg-primary-tint px-3 py-1 text-[12px] font-semibold text-primary-dark">
+          <span className="inline-block rounded-full border border-border bg-primary-tint px-3 py-1 text-[12px] font-semibold text-primary-texto">
             Grátis, sem mensalidade
           </span>
           <h1 className="mx-auto mt-5 max-w-[720px] text-[32px] font-bold leading-[1.15] tracking-tight md:text-[46px]">
             Orçamentos profissionais em minutos, com a cara da{" "}
-            <span className="text-primary">sua empresa</span>
+            <span className="text-primary-texto">sua empresa</span>
           </h1>
           <p className="mx-auto mt-4 max-w-[560px] text-[15px] leading-relaxed text-text-muted md:text-[16.5px]">
             Monte o orçamento, gere o PDF e envie pro cliente pelo WhatsApp. Seus dados ficam
@@ -188,9 +187,9 @@ export default function Landing() {
               {RECURSOS.map(({ icon: Icon, titulo, texto }) => (
                 <div
                   key={titulo}
-                  className="rounded-lg border border-border bg-bg p-5 transition-shadow hover:shadow-md"
+                  className="rounded-2xl border border-border bg-bg p-5 transition-shadow hover:shadow-md"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary-tint text-primary-dark">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-tint text-primary-texto">
                     <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
                   </span>
                   <h3 className="mt-3.5 text-[14.5px] font-bold">{titulo}</h3>
@@ -209,8 +208,8 @@ export default function Landing() {
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {PASSOS.map(({ numero, titulo, texto }) => (
-              <div key={numero} className="rounded-lg border border-border bg-surface p-6">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[14px] font-bold text-white">
+              <div key={numero} className="rounded-2xl border border-border bg-surface p-6">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[14px] font-bold text-sobre-primary">
                   {numero}
                 </span>
                 <h3 className="mt-4 text-[15px] font-bold">{titulo}</h3>
@@ -244,7 +243,7 @@ export default function Landing() {
           <span>
             Orça <span className="font-semibold text-text">Aqui</span> — gerador de orçamentos
           </span>
-          <Link href="/entrar" className="font-semibold text-primary hover:underline">
+          <Link href="/entrar" className="font-semibold text-primary-texto hover:underline">
             Entrar na conta
           </Link>
         </div>

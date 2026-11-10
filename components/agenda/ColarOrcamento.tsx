@@ -100,10 +100,10 @@ export function ColarOrcamento({ onCriado, onFechar }: { onCriado: (agendamentoI
         </Button>
       </div>
 
-      {erro && <p className="mt-3 rounded-lg border border-danger-border bg-danger-tint p-3 text-[13px] text-danger" role="alert">{erro}</p>}
+      {erro && <p className="mt-3 rounded-2xl border border-danger-border bg-danger-tint p-3 text-[13px] text-danger" role="alert">{erro}</p>}
 
       {leitura && sinal && (
-        <div className="mt-4 rounded-lg border border-border p-3.5 text-[13px]">
+        <div className="mt-4 rounded-2xl border border-border p-3.5 text-[13px]">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <span className="font-semibold text-text">{leitura.codigoRef}</span>
             <span className="text-text-muted">{leitura.existenteId ? "Atualiza o orçamento salvo" : "Orçamento novo"}</span>
@@ -128,7 +128,7 @@ export function ColarOrcamento({ onCriado, onFechar }: { onCriado: (agendamentoI
           <div className="flex justify-between text-text-muted"><span>Restante</span><span>{$(sinal.restante)}</span></div>
 
           {(leitura.avisos.length > 0 || leitura.pendencias.length > 0) && (
-            <ul className="mt-3 space-y-1 rounded-lg border border-warning bg-warning-tint p-2.5 text-[12.5px] text-warning">
+            <ul className="mt-3 space-y-1 rounded-2xl border border-warning bg-warning-tint p-2.5 text-[12.5px] text-warning">
               {leitura.avisos.map((a) => <li key={a}>⚠ {a}</li>)}
               {leitura.pendencias.map((p) => <li key={p}>• Pendência (não impede): {p}</li>)}
             </ul>

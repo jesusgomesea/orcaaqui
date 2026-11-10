@@ -15,6 +15,7 @@ import {
 import { useSessao } from "@/components/auth/ProvedorSessao";
 import { uuid, todayStr } from "./helpers";
 import { NOVIDADES } from "./changelog";
+import { comprimirLogo, LIMITE_LOGO_LEVE } from "./imagem";
 import { codigoServicoLivre, defaultState, mergeEmpresa, mudouPreco, normalizar, subirVersaoCatalogo } from "./estado";
 import { agendarOrcamento, aprovarLeitura, type LeituraColada, type ResultadoAprovacao } from "./colar";
 import type {
@@ -63,7 +64,8 @@ function arquivarLegadoDoNavegador() {
   }
 }
 
-export type StatusSincronizacao = "ocioso" | "salvando" | "erro";
+/** `conflito`: outro aparelho gravou antes; os salvamentos param até recarregar. */
+export type StatusSincronizacao = "ocioso" | "salvando" | "erro" | "conflito";
 
 interface StoreValue {
   state: EstadoApp;
@@ -120,25 +122,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const ultimoSalvo = useRef<string | null>(null);
   const pendente = useRef<EstadoApp | null>(null);
 
-  const salvar = useCallback(async (estado: EstadoApp): Promise<boolean> => {
-    const corpo = JSON.stringify(estado);
-    setStatusSincronizacao("salvando");
-    try {
-      const resposta = await fetch("/api/dados", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: corpo,
-      });
-      if (!resposta.ok) throw new Error(`Falha ao salvar (${resposta.status})`);
-      ultimoSalvo.current = corpo;
-      pendente.current = null;
-      setStatusSincronizacao("ocioso");
-      return true;
-    } catch (e) {
-      console.error("Não foi possível salvar os dados na sua conta.", e);
-      setStatusSincronizacao("erro");
-      return false;
-    }
+  // Versão (etag do Blobs) que este aparelho carregou ou gravou por último. O
+  // servidor só aceita gravar por cima dela: se outro aparelho salvou no meio,
+  // vem 409 e o app pede para recarregar, em vez de apagar o que o outro salvou.
+  const versao = useRef<string | null>(null);
+  const conflito = useRef(false);
+  // Salvamentos em fila: dois PUTs ao mesmo tempo mandariam a mesma versão e o
+  // segundo bateria no primeiro (falso conflito com o próprio aparelho).
+  const fila = useRef<Promise<unknown>>(Promise.resolve());
+
+  const salvar = useCallback((estado: EstadoApp): Promise<boolean> => {
+    const tarefa = fila.current.then(async () => {
+      if (conflito.current) return false;
+      const corpo = JSON.stringify(estado);
+      if (corpo === ultimoSalvo.current) {
+        if (pendente.current === estado) pendente.current = null;
+        return true;
+      }
+      setStatusSincronizacao("salvando");
+      try {
+        const resposta = await fetch("/api/dados", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estado, versaoBase: versao.current }),
+        });
+        if (resposta.status === 409) {
+          conflito.current = true;
+          setStatusSincronizacao("conflito");
+          return false;
+        }
+        if (!resposta.ok) throw new Error(`Falha ao salvar (${resposta.status})`);
+        const { versao: nova } = (await resposta.json().catch(() => ({}))) as { versao?: string | null };
+        versao.current = nova ?? null;
+        ultimoSalvo.current = corpo;
+        // Só limpa se não chegou alteração mais nova enquanto este PUT viajava.
+        if (pendente.current === estado) pendente.current = null;
+        setStatusSincronizacao("ocioso");
+        return true;
+      } catch (e) {
+        console.error("Não foi possível salvar os dados na sua conta.", e);
+        setStatusSincronizacao("erro");
+        return false;
+      }
+    });
+    fila.current = tarefa.catch(() => {});
+    return tarefa;
   }, []);
 
   // `pendente` já guarda o estado ainda não gravado (o efeito do debounce o
@@ -163,8 +191,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const { erro } = (await resposta.json().catch(() => ({}))) as { erro?: string };
           throw new Error(erro || `Falha ao carregar (${resposta.status})`);
         }
-        const { estado } = (await resposta.json()) as { estado: EstadoImportado | null };
+        const { estado, versao: lida } = (await resposta.json()) as { estado: EstadoImportado | null; versao?: string | null };
         if (!vivo) return;
+        versao.current = lida ?? null;
 
         const doServidor = normalizar(estado);
         if (doServidor) {
@@ -213,17 +242,77 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const aoSair = () => {
       const estado = pendente.current;
-      if (!estado) return;
+      if (!estado || conflito.current) return;
       fetch("/api/dados", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(estado),
+        body: JSON.stringify({ estado, versaoBase: versao.current }),
         keepalive: true,
       }).catch(() => {});
     };
     window.addEventListener("pagehide", aoSair);
     return () => window.removeEventListener("pagehide", aoSair);
   }, []);
+
+  // Logos gravadas antes da compressão (até 1,5 MB em base64) iam em todo
+  // salvamento. Comprime uma vez por sessão, no navegador, e salva normalmente.
+  const logosConferidas = useRef(false);
+  useEffect(() => {
+    if (!state || logosConferidas.current) return;
+    logosConferidas.current = true;
+    const pesadas = state.empresas.filter((e) => e.logoDataUrl.length > LIMITE_LOGO_LEVE);
+    for (const empresa of pesadas) {
+      comprimirLogo(empresa.logoDataUrl)
+        .then((leve) => {
+          if (leve.length >= empresa.logoDataUrl.length) return;
+          setState((s) =>
+            s
+              ? {
+                  ...s,
+                  empresas: s.empresas.map((e) =>
+                    e.id === empresa.id && e.logoDataUrl === empresa.logoDataUrl ? { ...e, logoDataUrl: leve } : e
+                  ),
+                }
+              : s
+          );
+        })
+        .catch(() => {});
+    }
+  }, [state]);
+
+  // Voltou para o app (outra aba, celular desbloqueado…): se não há nada
+  // pendente aqui, busca a versão mais nova do servidor. Assim o que foi salvo
+  // no outro aparelho aparece sozinho e o conflito quase não acontece.
+  useEffect(() => {
+    if (!usuario) return;
+    let buscando = false;
+    const aoVoltar = async () => {
+      if (document.visibilityState !== "visible" || buscando || conflito.current || pendente.current) return;
+      buscando = true;
+      try {
+        await fila.current;
+        const resposta = await fetch("/api/dados", { cache: "no-store" });
+        if (!resposta.ok) return;
+        const { estado, versao: lida } = (await resposta.json()) as { estado: EstadoImportado | null; versao?: string | null };
+        if (!lida || lida === versao.current || pendente.current) return;
+        const novo = normalizar(estado);
+        if (!novo) return;
+        versao.current = lida;
+        ultimoSalvo.current = JSON.stringify(novo);
+        setState(novo);
+      } catch {
+        // Sem rede: fica com o que tem; o próximo salvamento confere a versão.
+      } finally {
+        buscando = false;
+      }
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    return () => {
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
+    };
+  }, [usuario]);
 
   const importState = useCallback((novoEstado: EstadoImportado) => {
     const normalizado = normalizar(novoEstado);
@@ -464,7 +553,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={value}>
+      {statusSincronizacao === "conflito" && (
+        <div
+          role="alert"
+          className="fixed inset-x-3 top-3 z-[60] mx-auto flex max-w-xl flex-wrap items-center gap-3 rounded-xl border border-warning bg-warning-tint p-3.5 text-[13px] text-warning shadow-[var(--shadow-lg)]"
+        >
+          <span className="min-w-0 flex-1">
+            Seus dados foram alterados em outro aparelho. Recarregue para ver a versão mais nova — a última alteração feita
+            aqui não foi salva.
+          </span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-full bg-warning px-4 py-1.5 font-semibold text-bg cursor-pointer"
+          >
+            Recarregar
+          </button>
+        </div>
+      )}
+      {children}
+    </StoreContext.Provider>
+  );
 }
 
 export function useStore() {

@@ -79,7 +79,7 @@ function ServicoForm({
           <Label>Prazo de entrega (opcional)</Label>
           <Input value={f.prazo ?? ""} onChange={(e) => set({ prazo: e.target.value || undefined })} placeholder="Ex: Em até 7 dias" />
         </div>
-        <div className="sm:col-span-2 rounded-lg border border-border p-3">
+        <div className="sm:col-span-2 rounded-2xl border border-border p-3">
           <label className="flex cursor-pointer items-center gap-2 text-[13px] text-text">
             <input
               type="checkbox"

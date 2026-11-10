@@ -38,7 +38,7 @@ export default function NovaSenhaPage() {
   if (!carregando && !usuario) {
     return (
       <MolduraAuth titulo="Link expirado" descricao="Peça um novo link de recuperação para continuar.">
-        <a href="/recuperar-senha" className="text-[13px] font-semibold text-primary hover:underline">
+        <a href="/recuperar-senha" className="text-[13px] font-semibold text-primary-texto hover:underline">
           Pedir novo link
         </a>
       </MolduraAuth>

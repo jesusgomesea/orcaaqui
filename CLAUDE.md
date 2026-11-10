@@ -42,6 +42,10 @@ Um único objeto de estado por usuário, gravado como JSON no Netlify Blobs (sto
 
 No cliente, [lib/store.tsx](lib/store.tsx) (Context API) carrega o estado ao montar e salva com debounce de 700ms — digitar num campo não dispara uma requisição por tecla. Um `pagehide` faz a última gravação pendente com `keepalive`, pra fechar a aba dentro da janela do debounce não perder a alteração. O status aparece no rodapé do Sidebar (`statusSincronizacao`).
 
+**Controle de versão (dois aparelhos).** O GET devolve `{ estado, versao }` (o etag do Blobs) e o PUT manda `{ estado, versaoBase }`; o servidor grava com `onlyIfMatch` (ou `onlyIfNew` numa conta nova) e responde **409** se outro aparelho salvou no meio ([lib/server/dados.ts](lib/server/dados.ts), corpo validado em `lerCorpoDoPut`, testado). No 409 o store para de salvar (`statusSincronizacao: "conflito"`) e mostra uma faixa com "Recarregar" — antes o último aparelho a salvar apagava em silêncio o que o outro gravou. O corpo antigo (estado solto, sem versão), de uma aba aberta antes da atualização, também vira 409.
+- Os PUTs passam por uma **fila** (`fila` no store): dois salvamentos simultâneos mandariam a mesma versão e o segundo daria falso conflito com o próprio aparelho.
+- Ao **voltar para o app** (`visibilitychange`/`focus`), sem nada pendente, o store relê o servidor e, se a versão mudou, troca o estado — o que foi salvo no outro aparelho aparece sozinho e o conflito quase não acontece.
+
 Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
 ```ts
 {
@@ -58,7 +62,7 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
       status /* rascunho | enviado | aprovado | recusado */,
       servicoContrato? /* data, horários e local do serviço moram aqui */,
       pagamentos?: [{ id, tipo /* sinal | restante | integral | outro */, valor, data, forma, descricao? }],
-      codigoRef? /* ORC-0012 | EJ-XXXXX */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
+      codigoRef? /* ORC-0012 | EJ-XXXXX */, refEj? /* linha [ref EJ-…] */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
     servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
@@ -87,9 +91,9 @@ Cada empresa é totalmente isolada (clientes/orçamentos/serviços próprios) �
 
 Status **expirado** não é gravado — é calculado na hora (`statusEfetivo` em [lib/helpers.ts](lib/helpers.ts)) comparando a validade com a data de hoje.
 
-**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em `store.tsx` numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
+**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em [lib/estado.ts](lib/estado.ts) numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
 
-A logo é salva como `data:` URL (base64) direto no state; o upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) rejeita arquivos acima de 1.5MB, e a rota recusa corpo acima de 8MB.
+A logo é salva como `data:` URL direto no state, por isso vai em **todo** salvamento (e o `keepalive` do `pagehide` recusa corpo acima de 64 KB). O upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) comprime com `comprimirLogo` ([lib/imagem.ts](lib/imagem.ts)): no máximo 400px, WebP (PNG onde não houver), SVG passa direto — fica na casa de 10–40 KB. Logos antigas acima de 80 KB são comprimidas uma vez ao abrir a conta. A rota recusa corpo acima de 8MB.
 
 Backup/portabilidade: exportar/importar o JSON inteiro do state (botões em Empresa) — inclui todas as empresas. Serve pra guardar cópia fora do serviço ou levar tudo pra outra conta. Importar **substitui** os dados da conta, por isso pede confirmação.
 
@@ -111,8 +115,17 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
 - **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
 
+## Visual (inspirado no orgfinapp)
+Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em tons de zinco, **um** destaque, fonte **Geist** (`@fontsource-variable/geist`), cartões com canto de 24px, campos preenchidos com canto de 16px e botões em pílula. **Escuro é o padrão** (`SCRIPT_TEMA`); o claro continua no botão de tema.
+
+- **O destaque é a cor da empresa.** [CorDaEmpresa](components/layout/CorDaEmpresa.tsx) escreve `--primary` (de `empresa.corPrimaria`) e `--sobre-primary` (preto ou branco, o de maior contraste — `corSobre` em [lib/cor.ts](lib/cor.ts), testado) no `<html>`. Os tons derivados (`--primary-tint`, `--primary-dark`…) saem por `color-mix` em [globals.css](app/globals.css), então qualquer cor funciona. Fora do app (landing, entrar) vale a cor da marca, `#c6f432`.
+- **Destaque como texto usa `text-primary-texto`**, nunca `text-primary`: no claro é puxado para o escuro e no escuro para o claro, senão uma cor clara some no fundo branco (e um azul-marinho some no preto). Em cima do destaque, `text-sobre-primary`.
+- Tokens: `bg-bg`, `bg-surface` (cartão), `bg-surface-2` (campo, botão secundário), `text-text`, `text-text-muted`, `--radius-cartao`/`--radius-campo`. Componente novo usa os tokens e os primitivos de `components/ui`.
+- **Campos com fonte de 16px no celular** (`sm:` volta a 14px): abaixo disso o iPhone dá zoom sozinho ao tocar no campo. Botões e campos com 44px de altura de toque no celular.
+- **Marca**: [components/marca/Marca.tsx](components/marca/Marca.tsx) (símbolo SVG inline, segue a cor de destaque) e [public/favicon.svg](public/favicon.svg) (cor da marca fixa).
+
 ## Layout no celular
-- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), barra lateral fixa; no celular, topo compacto (marca, empresa, tema) e barra fixa embaixo com Painel, Orçamentos, Agenda, Clientes e "Mais" (Serviços, Empresa, Novidades, Sair). O `<main>` tem `pb-24` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
+- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), coluna lateral com o botão "Montar orçamento"; no celular, topo leve (marca, empresa, tema) e **barra de abas flutuante em pílula**: Painel, Orçamentos, **+** (montar orçamento), Agenda e "Mais" (Clientes, Serviços, Empresa, Novidades, Sair). O "+" leva a `/orcamentos?montar=1`; já na página de orçamentos ele não navega e dispara o evento `EVENTO_MONTAR`, que a página escuta. O `<main>` tem `pb-32` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
 - **Listas**: tabela só onde cabe — orçamentos em cartões até `xl` (a linha tem 8 ações); clientes, serviços e as tabelas do painel em cartões abaixo de `md`. As ações de um orçamento são uma função só (`acoes`) usada no cartão e na tabela.
 - **Diálogos** ([dialog.tsx](components/ui/dialog.tsx)): no celular ocupam a largura menos 0,75rem de cada lado, altura em `dvh` (desconta a barra do navegador) e `p-4`.
 
@@ -149,6 +162,7 @@ Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components
 O prestador monta pelo catálogo ([components/gerador/MontadorOrcamento.tsx](components/gerador/MontadorOrcamento.tsx), regras em [lib/gerador.ts](lib/gerador.ts), testadas): serviços × quantidade com preço por volume (`precoUnitario`: a partir de `volumeMin`, TODAS as unidades saem por `precoVolume`), faixa de deslocamento (`config.deslocamentos`), desconto e acréscimo em valor. Total, sinal e restante ao vivo. "Enviar pelo WhatsApp" salva com `origem: "gerador"`, `codigoRef: "ORC-0012"` e status **enviado** (o botão de WhatsApp da lista também tira do rascunho).
 
 - **Nunca confiar no total escrito.** A mensagem leva `[ref ORC-0012 e=<config.codigo> v<config.versaoCatalogo> i=<Servico.codigo>:<qtd>,… d=<desconto> a=<acréscimo> ds=<faixa> dt=AAAA-MM-DD hr=HH:MM]` (campos zerados omitidos). Quem cola recalcula pelo catálogo (`recalcularRefOrc`): versão ou empresa diferente vira aviso; serviço que sumiu impede o cálculo. Os rótulos da mensagem (`*Cliente:*`, `*WhatsApp:*`, `*Serviço:*`, `*Data desejada:*`, `*Local:*`, `*Total:*`, `*Observações:*`) são os mesmos do site do EJ. Texto livre passa por `limparLivre` (uma linha, sem `[`, `]`, `*`).
+- Orçamento feito pela tabela do EJ grava a linha inteira em `Orcamento.refEj`; `decodificarRefEj` (o inverso de `codificarRefEj`) reabre o montador com a mesma escolha. Colar uma mensagem do EJ também grava `refEj`.
 - Os itens gravados levam `servicoId` (e `deslocamentoId` no item de deslocamento, marcado como adicional para o contrato). `selecaoDoOrcamento` reabre no montador; com item livre, só o formulário livre edita. Reenviar usa os preços **gravados** (`calculoDoOrcamento`), não os de hoje.
 - O número `ORC-…` é previsto como `empresaAtiva.proximoNumero` no clique — o mesmo que o `addOrcamento` atribui.
 
