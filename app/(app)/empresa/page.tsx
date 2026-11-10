@@ -141,7 +141,7 @@ function PrestadorSection() {
   const p = { ...PRESTADOR_VAZIO, ...empresaAtiva.prestador };
   const set = (patch: Partial<Prestador>) => updateEmpresaAtiva({ prestador: { ...p, ...patch } });
 
-  const avisoCpf = p.cpf && !cpfValido(p.cpf) ? `CPF inválido: ${motivoCpfInvalido(p.cpf)}.` : "";
+  const avisoCpf = p.cpf && !cpfValido(p.cpf) ? `Confira o CPF: ${motivoCpfInvalido(p.cpf)}.` : "";
   const avisoWhats = p.whatsapp && !telefoneValido(p.whatsapp) ? "Use o formato (00) 00000-0000." : "";
 
   return (

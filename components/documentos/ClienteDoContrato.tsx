@@ -10,7 +10,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { ClienteForm, type ClienteFormDados } from "@/components/clientes/ClienteForm";
-import { cpfValido, emailValido, motivoCpfInvalido } from "@/lib/documentos/formatos";
+import { cpfAceito, cpfValido, emailValido, motivoCpfInvalido } from "@/lib/documentos/formatos";
 import { clientesParecidos } from "@/lib/orcamento";
 import type { Cliente, Orcamento } from "@/lib/tipos";
 
@@ -18,7 +18,7 @@ import type { Cliente, Orcamento } from "@/lib/tipos";
 function pendenciasDoCliente(c: Cliente): string[] {
   const p: string[] = [];
   if (!c.documento.trim()) p.push("sem CPF");
-  else if (!cpfValido(c.documento)) p.push("CPF inválido");
+  else if (!cpfAceito(c.documento)) p.push("CPF incompleto");
   if (!c.email.trim()) p.push("sem e-mail");
   else if (!emailValido(c.email)) p.push("e-mail inválido");
   return p;
