@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
-import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/geist";
 import "./globals.css";
 import ProvedorSessao from "@/components/auth/ProvedorSessao";
 import { SCRIPT_TEMA } from "@/lib/tema";
@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           token no hash e podem cair em qualquer página.
         */}
         <ProvedorSessao>{children}</ProvedorSessao>
-        <Toaster position="bottom-right" richColors closeButton mobileOffset={{ bottom: 80 }} />
+        <Toaster position="bottom-right" richColors closeButton mobileOffset={{ bottom: 96 }} />
       </body>
     </html>
   );

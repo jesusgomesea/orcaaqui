@@ -567,7 +567,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-full bg-warning px-4 py-1.5 font-semibold text-white cursor-pointer"
+            className="rounded-full bg-warning px-4 py-1.5 font-semibold text-bg cursor-pointer"
           >
             Recarregar
           </button>

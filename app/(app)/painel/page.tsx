@@ -40,7 +40,7 @@ function faturamentoPorMes(orcamentos: Orcamento[], meses = 6) {
 function Kpi({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
   return (
     <Card className="flex items-center gap-3.5 p-3.5 sm:p-5">
-      <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary sm:flex">
+      <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary-texto sm:flex">
         <Icon className="h-5 w-5" strokeWidth={1.8} />
       </div>
       <div className="min-w-0">
@@ -95,7 +95,7 @@ export default function PainelPage() {
       <Card className="mb-5">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-[15px] font-bold text-text">Próximos serviços</h2>
-          <Link href="/agenda" className="text-[12.5px] font-semibold text-primary hover:underline">Abrir agenda</Link>
+          <Link href="/agenda" className="text-[12.5px] font-semibold text-primary-texto hover:underline">Abrir agenda</Link>
         </div>
         {agenda.proximos.length === 0 ? (
           <EmptyState message="Nenhum serviço agendado para os próximos 30 dias." />

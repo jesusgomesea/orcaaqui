@@ -115,8 +115,17 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
 - **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
 
+## Visual (inspirado no orgfinapp)
+Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em tons de zinco, **um** destaque, fonte **Geist** (`@fontsource-variable/geist`), cartões com canto de 24px, campos preenchidos com canto de 16px e botões em pílula. **Escuro é o padrão** (`SCRIPT_TEMA`); o claro continua no botão de tema.
+
+- **O destaque é a cor da empresa.** [CorDaEmpresa](components/layout/CorDaEmpresa.tsx) escreve `--primary` (de `empresa.corPrimaria`) e `--sobre-primary` (preto ou branco, o de maior contraste — `corSobre` em [lib/cor.ts](lib/cor.ts), testado) no `<html>`. Os tons derivados (`--primary-tint`, `--primary-dark`…) saem por `color-mix` em [globals.css](app/globals.css), então qualquer cor funciona. Fora do app (landing, entrar) vale a cor da marca, `#c6f432`.
+- **Destaque como texto usa `text-primary-texto`**, nunca `text-primary`: no claro é puxado para o escuro e no escuro para o claro, senão uma cor clara some no fundo branco (e um azul-marinho some no preto). Em cima do destaque, `text-sobre-primary`.
+- Tokens: `bg-bg`, `bg-surface` (cartão), `bg-surface-2` (campo, botão secundário), `text-text`, `text-text-muted`, `--radius-cartao`/`--radius-campo`. Componente novo usa os tokens e os primitivos de `components/ui`.
+- **Campos com fonte de 16px no celular** (`sm:` volta a 14px): abaixo disso o iPhone dá zoom sozinho ao tocar no campo. Botões e campos com 44px de altura de toque no celular.
+- **Marca**: [components/marca/Marca.tsx](components/marca/Marca.tsx) (símbolo SVG inline, segue a cor de destaque) e [public/favicon.svg](public/favicon.svg) (cor da marca fixa).
+
 ## Layout no celular
-- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), barra lateral fixa; no celular, topo compacto (marca, empresa, tema) e barra fixa embaixo com Painel, Orçamentos, Agenda, Clientes e "Mais" (Serviços, Empresa, Novidades, Sair). O `<main>` tem `pb-24` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
+- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), coluna lateral com o botão "Montar orçamento"; no celular, topo leve (marca, empresa, tema) e **barra de abas flutuante em pílula**: Painel, Orçamentos, **+** (montar orçamento), Agenda e "Mais" (Clientes, Serviços, Empresa, Novidades, Sair). O "+" leva a `/orcamentos?montar=1`; já na página de orçamentos ele não navega e dispara o evento `EVENTO_MONTAR`, que a página escuta. O `<main>` tem `pb-32` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
 - **Listas**: tabela só onde cabe — orçamentos em cartões até `xl` (a linha tem 8 ações); clientes, serviços e as tabelas do painel em cartões abaixo de `md`. As ações de um orçamento são uma função só (`acoes`) usada no cartão e na tabela.
 - **Diálogos** ([dialog.tsx](components/ui/dialog.tsx)): no celular ocupam a largura menos 0,75rem de cada lado, altura em `dvh` (desconta a barra do navegador) e `p-4`.
 

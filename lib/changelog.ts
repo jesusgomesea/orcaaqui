@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-09-03",
+    data: "2026-11-09",
+    tipo: "novidade",
+    titulo: "Cara nova",
+    descricao:
+      "O Orça Aqui ganhou um visual novo: tema escuro por padrão, cartões arredondados, botões em pílula e a fonte Geist. A cor de destaque agora é a cor da sua empresa (em Empresa → Identidade). No celular, a barra de baixo flutua e tem um botão + para montar um orçamento de qualquer tela. E o Orça Aqui tem logo própria.",
+  },
+  {
     id: "2026-11-09-02",
     data: "2026-11-09",
     tipo: "melhoria",

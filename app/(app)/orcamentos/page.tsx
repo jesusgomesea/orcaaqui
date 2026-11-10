@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { EVENTO_MONTAR } from "@/components/layout/Sidebar";
 import { toast } from "sonner";
 import { Plus, Trash2, MessageCircle, Printer, Copy, FileSignature, CalendarCheck, CalendarDays } from "lucide-react";
 import Link from "next/link";
@@ -33,7 +34,7 @@ import type {
 function DadosServicoFieldset({ valor, onChange }: { valor: ServicoContrato; onChange: (v: ServicoContrato) => void }) {
   const set = (patch: Partial<ServicoContrato>) => onChange({ ...valor, ...patch });
   return (
-    <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
+    <fieldset className="mb-3.5 rounded-2xl border border-border p-3.5">
       <legend className="px-1.5 text-xs font-semibold text-text-muted">Dados do serviço (contrato)</legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div><Label>Serviço</Label><Input value={valor.servico} onChange={(e) => set({ servico: e.target.value })} placeholder="Ensaio ao ar livre" /></div>
@@ -134,7 +135,7 @@ function OrcamentoForm({
     <>
       <DialogTitle>{orcamento._isEdit ? "Editar" : "Novo"} orçamento</DialogTitle>
 
-      <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
+      <fieldset className="mb-3.5 rounded-2xl border border-border p-3.5">
         <legend className="px-1.5 text-xs font-semibold text-text-muted">Cliente e validade</legend>
         <div className="mb-3 flex items-end gap-2">
           <div className="flex-1">
@@ -173,11 +174,11 @@ function OrcamentoForm({
         <p className="mt-2 text-[11.5px] text-text-muted">Válido até {formatDateBR(addDaysStr(f.data || todayStr(), f.validadeDias || 0))}.</p>
       </fieldset>
 
-      <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
+      <fieldset className="mb-3.5 rounded-2xl border border-border p-3.5">
         <legend className="px-1.5 text-xs font-semibold text-text-muted">Itens do orçamento</legend>
         <div className="space-y-3">
           {f.itens.map((it) => (
-            <div key={it.id} className="rounded-lg border border-border p-2.5">
+            <div key={it.id} className="rounded-2xl border border-border p-2.5">
               <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap sm:items-start">
                 {servicos.length > 0 && (
                   <div className="w-full sm:w-40 sm:shrink-0">
@@ -215,7 +216,7 @@ function OrcamentoForm({
                   </label>
                 )}
                 <div className="flex h-9 min-w-[5.5rem] flex-1 items-center justify-end text-[13px] font-semibold text-text">{formatMoney((Number(it.quantidade) || 0) * (Number(it.valorUnitario) || 0), f.moeda)}</div>
-                <button type="button" onClick={() => removeItem(it.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger-tint hover:text-danger cursor-pointer">
+                <button type="button" onClick={() => removeItem(it.id)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-danger-tint hover:text-danger cursor-pointer">
                   <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                 </button>
               </div>
@@ -229,7 +230,7 @@ function OrcamentoForm({
             </div>
           ))}
         </div>
-        <button type="button" onClick={addItem} className="mt-2.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[12.5px] font-semibold text-primary hover:bg-primary-tint cursor-pointer">
+        <button type="button" onClick={addItem} className="mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-primary-texto hover:bg-primary-tint cursor-pointer">
           <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Adicionar item
         </button>
 
@@ -261,7 +262,7 @@ function OrcamentoForm({
         />
       )}
 
-      <fieldset className="mb-3.5 rounded-lg border border-border p-3.5">
+      <fieldset className="mb-3.5 rounded-2xl border border-border p-3.5">
         <legend className="px-1.5 text-xs font-semibold text-text-muted">Condições e observações</legend>
         <div className="mb-3"><Label>Condições de pagamento</Label><Textarea rows={2} value={f.condicoes} onChange={(e) => set({ condicoes: e.target.value })} /></div>
         <div><Label>Observações (opcional)</Label><Textarea rows={2} value={f.observacoes} onChange={(e) => set({ observacoes: e.target.value })} /></div>
@@ -299,6 +300,22 @@ export default function OrcamentosPage() {
   const [documentosId, setDocumentosId] = useState<string | null>(null);
   /** Montador aberto: `null` fechado, `"novo"` ou o orçamento sendo reeditado. */
   const [montador, setMontador] = useState<Orcamento | "novo" | null>(null);
+  // Botão "+" da navegação (/orcamentos?montar=1): abre o montador e limpa a URL,
+  // para voltar/recarregar não abrir de novo.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("montar")) return;
+    url.searchParams.delete("montar");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    // oxlint-disable-next-line react/set-state-in-effect -- sincroniza com a URL, que é externa ao React
+    setMontador("novo");
+  }, []);
+  // Já nesta página, o "+" não navega: avisa por evento (ver Sidebar).
+  useEffect(() => {
+    const abrir = () => setMontador("novo");
+    window.addEventListener(EVENTO_MONTAR, abrir);
+    return () => window.removeEventListener(EVENTO_MONTAR, abrir);
+  }, []);
   const contratosHabilitados = !!empresaAtiva.prestador?.habilitado;
   // Lido do store a cada render: pagamentos registrados no diálogo aparecem na hora.
   const orcamentoDocumentos = documentosId ? empresaAtiva.orcamentos.find((o) => o.id === documentosId) : undefined;
@@ -395,39 +412,42 @@ export default function OrcamentosPage() {
   };
 
   /** Ações de um orçamento — as mesmas no cartão (celular) e na linha da tabela (desktop). */
-  const acoes = (o: Orcamento, status: ReturnType<typeof statusEfetivo>, tabela = false) => (
-    <div className={cn("flex gap-1.5", tabela ? "flex-nowrap justify-end" : "flex-wrap")}>
+  const acoes = (o: Orcamento, status: ReturnType<typeof statusEfetivo>, tabela = false) => {
+    const icone = "w-[34px] px-0";
+    return (
+    <div className={cn("flex", tabela ? "flex-nowrap justify-end gap-1.5" : "flex-wrap gap-1 sm:gap-1.5")}>
       <Button variant="secondary" size="sm" onClick={() => openEditar(o)}>Editar</Button>
-      <Button variant="secondary" size="sm" onClick={() => handlePdf(o)} title="Gerar PDF/imprimir" aria-label="Gerar PDF ou imprimir">
+      <Button variant="secondary" size="sm" className={icone} onClick={() => handlePdf(o)} title="Gerar PDF/imprimir" aria-label="Gerar PDF ou imprimir">
         <Printer className="h-3.5 w-3.5" strokeWidth={1.8} />
       </Button>
-      <Button variant="secondary" size="sm" onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp">
+      <Button variant="secondary" size="sm" className={icone} onClick={() => handleWhatsapp(o)} title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp">
         <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
       </Button>
       {agendado(o) ? (
-        <Link href="/agenda" title="Ver na agenda" aria-label="Ver na agenda" className="inline-flex h-7 items-center rounded-md border border-border-strong bg-surface px-2.5 text-text hover:bg-bg">
+        <Link href="/agenda" title="Ver na agenda" aria-label="Ver na agenda" className={cn("inline-flex h-9 items-center justify-center rounded-full bg-surface-2 text-text hover:bg-border-strong/60", icone)}>
           <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.8} />
         </Link>
       ) : (
         status !== "recusado" && (
-          <Button variant="secondary" size="sm" onClick={() => handleAgendar(o)} title="Cliente aprovou → agendar" aria-label="Cliente aprovou, agendar">
+          <Button variant="secondary" size="sm" className={icone} onClick={() => handleAgendar(o)} title="Cliente aprovou → agendar" aria-label="Cliente aprovou, agendar">
             <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
           </Button>
         )
       )}
       {contratosHabilitados && (
-        <Button variant="secondary" size="sm" onClick={() => setDocumentosId(o.id)} title="Contrato e recibos" aria-label="Contrato e recibos">
+        <Button variant="secondary" size="sm" className={icone} onClick={() => setDocumentosId(o.id)} title="Contrato e recibos" aria-label="Contrato e recibos">
           <FileSignature className="h-3.5 w-3.5" strokeWidth={1.8} />
         </Button>
       )}
-      <Button variant="secondary" size="sm" onClick={() => handleDuplicar(o)} title="Duplicar" aria-label="Duplicar">
+      <Button variant="secondary" size="sm" className={icone} onClick={() => handleDuplicar(o)} title="Duplicar" aria-label="Duplicar">
         <Copy className="h-3.5 w-3.5" strokeWidth={1.8} />
       </Button>
-      <Button variant="danger" size="sm" onClick={() => handleExcluir(o)} aria-label="Excluir" title="Excluir">
+      <Button variant="danger" size="sm" className={tabela ? undefined : icone} onClick={() => handleExcluir(o)} aria-label="Excluir" title="Excluir">
         {tabela ? "Excluir" : <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />}
       </Button>
     </div>
   );
+  };
 
   return (
     <div>

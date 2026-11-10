@@ -14,7 +14,7 @@ export default function BotaoTema({ className = "" }: { className?: string }) {
       onClick={alternarTema}
       title={rotulo}
       aria-label={rotulo}
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-bg hover:text-text cursor-pointer ${className}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-2 hover:text-text cursor-pointer ${className}`}
     >
       <Icone className="h-4 w-4" strokeWidth={1.8} />
     </button>

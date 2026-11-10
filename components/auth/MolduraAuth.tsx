@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Marca } from "@/components/marca/Marca";
 import { Card } from "@/components/ui/card";
 
 export default function MolduraAuth({
@@ -15,8 +16,8 @@ export default function MolduraAuth({
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg p-5">
       <div className="w-full max-w-[400px]">
-        <div className="mb-5 text-center text-[22px] font-bold text-text">
-          Orça <span className="text-primary">Aqui</span>
+        <div className="mb-6 flex justify-center">
+          <Marca tamanho={34} />
         </div>
         <Card>
           <h1 className="mb-1 text-[16.5px] font-bold text-text">{titulo}</h1>

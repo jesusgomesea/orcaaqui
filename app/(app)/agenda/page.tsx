@@ -26,7 +26,7 @@ const ABAS: { id: Aba; nome: string; situacao: ItemAgenda["situacao"] }[] = [
 function Numero({ icone: Icone, rotulo, valor }: { icone: typeof Wallet; rotulo: string; valor: string }) {
   return (
     <Card className="flex items-center gap-3 p-3 sm:p-3.5">
-      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-tint text-primary sm:flex">
+      <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary-texto sm:flex">
         <Icone className="h-4.5 w-4.5" strokeWidth={1.8} />
       </div>
       <div className="min-w-0">
@@ -80,13 +80,13 @@ export default function AgendaPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-[13px]">
+        <div className="inline-flex rounded-2xl border border-border p-0.5 text-[13px]">
           {ABAS.map((x) => (
             <button
               key={x.id}
               type="button"
               onClick={() => setAba(x.id)}
-              className={cn("rounded-md px-3 py-1.5 font-medium cursor-pointer", aba === x.id ? "bg-primary-tint text-primary" : "text-text-muted hover:text-text")}
+              className={cn("rounded-full px-3.5 py-1.5 font-medium cursor-pointer", aba === x.id ? "bg-primary-tint text-primary-texto" : "text-text-muted hover:text-text")}
             >
               {x.nome} <span className="text-[11.5px] opacity-70">{contagem(x.situacao)}</span>
             </button>
@@ -119,8 +119,8 @@ export default function AgendaPage() {
               const atrasado = aba === "agenda" && i.data && i.data < hoje;
               return (
                 <li key={a.id}>
-                  <button type="button" onClick={() => setAberto(a.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-bg cursor-pointer">
-                    <div className="w-24 shrink-0 text-[13px]">
+                  <button type="button" onClick={() => setAberto(a.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-surface-2 cursor-pointer">
+                    <div className="w-[84px] shrink-0 text-[13px] sm:w-24">
                       <div className={cn("font-semibold", atrasado ? "text-warning" : "text-text")}>{i.data ? formatDateBR(i.data) : "Sem data"}</div>
                       <div className="text-[11.5px] text-text-muted">{i.horario || " "}</div>
                     </div>
@@ -130,12 +130,13 @@ export default function AgendaPage() {
                         {[i.orcamento?.servicoContrato?.servico, i.local, i.orcamento?.codigoRef].filter(Boolean).join(" · ") || "—"}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
+                    {/* No celular, etapa e valor descem para baixo do nome (a linha não espreme o cliente). */}
+                    <div className="flex w-full shrink-0 items-center justify-between gap-3 pl-[100px] sm:w-auto sm:justify-end sm:pl-0">
                       <Badge tone={a.etapa === etapas[0]?.id ? "amber" : i.situacao === "concluido" ? "green" : i.situacao === "cancelado" ? "red" : "gray"}>
                         {nomeEtapa(a.etapa, etapas)}
                       </Badge>
                       {i.situacao !== "cancelado" && (
-                        <span className="w-24 text-right text-[12.5px] text-text-muted">
+                        <span className="text-right text-[12.5px] text-text-muted sm:w-28">
                           {restante > 0 ? <>falta <b className="text-text">{formatMoney(restante, a.moeda)}</b></> : "quitado"}
                         </span>
                       )}

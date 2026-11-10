@@ -2,37 +2,51 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+  Visual (inspirado no orgfinapp): zinco, um único destaque, fonte Geist,
+  cartões de canto bem arredondado e botões em pílula. Escuro é o padrão.
+
+  O destaque (--primary) é a COR DA EMPRESA ativa: o componente CorDaEmpresa
+  (layout do app) escreve --primary e --sobre-primary no <html>. Os tons
+  derivados saem por color-mix, então qualquer cor funciona. Fora do app
+  (landing, entrar) vale a cor da marca abaixo.
+*/
 :root{
-  --bg:#f4f6f9;
+  --primary:#c6f432;          /* marca Orça Aqui */
+  --sobre-primary:#0a0a0a;    /* texto/ícone em cima do destaque */
+
+  --bg:#f4f4f5;
   --surface:#ffffff;
-  --border:#e3e7ee;
-  --border-strong:#d3d9e3;
-  --text:#1a2233;
-  --text-muted:#667085;
+  --surface-2:#f1f1f4;
+  --border:#e4e4e7;
+  --border-strong:#d4d4d8;
+  --text:#0b0b0f;
+  --text-muted:#52525b;
 
-  --primary:#2563eb;
-  --primary-dark:#1d4ed8;
-  --primary-light:#3b82f6;
-  --primary-tint:#eaf1ff;
-  --primary-tint-strong:#dbe8ff;
+  /* destaque como TEXTO: no claro, puxado para o escuro (cor clara em fundo branco não se lê) */
+  --primary-texto:color-mix(in oklab, var(--primary) 52%, black);
+  --primary-dark:color-mix(in oklab, var(--primary) 82%, black);
+  --primary-light:color-mix(in oklab, var(--primary) 85%, white);
+  --primary-tint:color-mix(in oklab, var(--primary) 16%, transparent);
+  --primary-tint-strong:color-mix(in oklab, var(--primary) 28%, transparent);
 
-  --success:#17803d;
-  --success-tint:#e7f6ec;
-  --danger:#d92d20;
-  --danger-tint:#fdece9;
-  --danger-border:#f3c6bd;
-  --warning:#b54708;
-  --warning-tint:#fef0e2;
-  --info:#175cd3;
-  --info-tint:#eaf1ff;
+  --success:#15803d;
+  --success-tint:#dcfce7;
+  --danger:#dc2626;
+  --danger-tint:#fee2e2;
+  --danger-border:#fca5a5;
+  --warning:#b45309;
+  --warning-tint:#fef3c7;
+  --info:#0369a1;
+  --info-tint:#e0f2fe;
 
-  --shadow-xs:0 1px 2px rgba(16,24,40,.05);
-  --shadow:0 1px 2px rgba(16,24,40,.04), 0 2px 8px rgba(16,24,40,.06);
-  --shadow-md:0 4px 14px rgba(16,24,40,.08), 0 1px 3px rgba(16,24,40,.06);
-  --shadow-lg:0 16px 40px rgba(16,24,40,.16), 0 4px 10px rgba(16,24,40,.08);
+  --shadow-xs:0 1px 2px rgb(0 0 0 / 4%);
+  --shadow:0 1px 2px rgb(0 0 0 / 4%), 0 6px 20px rgb(0 0 0 / 5%);
+  --shadow-md:0 4px 14px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%);
+  --shadow-lg:0 16px 40px rgb(0 0 0 / 16%), 0 4px 10px rgb(0 0 0 / 8%);
 
-  --toast-bg:#1a2233;
-  --toast-text:#ffffff;
+  --toast-bg:#0b0b0f;
+  --toast-text:#fafafa;
   color-scheme: light;
 }
 
@@ -42,48 +56,49 @@
   um instante para quem escolheu escuro.
 */
 .dark{
-  --bg:#12161f;
-  --surface:#1a2029;
-  --border:#29313d;
-  --border-strong:#3a4352;
-  --text:#e6eaf2;
-  --text-muted:#98a3b6;
+  --bg:#09090b;
+  --surface:#18181b;
+  --surface-2:#27272a;
+  --border:#27272a;
+  --border-strong:#3f3f46;
+  --text:#fafafa;
+  --text-muted:#a1a1aa;
 
-  --primary:#3b82f6;
-  --primary-dark:#2563eb;
-  --primary-light:#60a5fa;
-  --primary-tint:#1b2841;
-  --primary-tint-strong:#243553;
+  /* no escuro, puxado para o claro: um azul-marinho de empresa continua legível */
+  --primary-texto:color-mix(in oklab, var(--primary) 72%, white);
 
   --success:#4ade80;
-  --success-tint:#14301f;
-  --danger:#f87171;
-  --danger-tint:#3a1c19;
-  --danger-border:#6b2f29;
-  --warning:#fbbf24;
-  --warning-tint:#3a2a10;
-  --info:#60a5fa;
-  --info-tint:#1b2841;
+  --success-tint:#14281b;
+  --danger:#ff6b6b;
+  --danger-tint:#2e1515;
+  --danger-border:#5c2424;
+  --warning:#facc15;
+  --warning-tint:#2a2614;
+  --info:#38bdf8;
+  --info-tint:#0c2433;
 
-  --shadow-xs:0 1px 2px rgba(0,0,0,.3);
-  --shadow:0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.32);
-  --shadow-md:0 4px 14px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.3);
-  --shadow-lg:0 16px 40px rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.35);
+  --shadow-xs:0 1px 2px rgb(0 0 0 / 30%);
+  --shadow:0 1px 2px rgb(0 0 0 / 28%), 0 2px 8px rgb(0 0 0 / 32%);
+  --shadow-md:0 4px 14px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 30%);
+  --shadow-lg:0 16px 40px rgb(0 0 0 / 55%), 0 4px 10px rgb(0 0 0 / 35%);
 
-  --toast-bg:#e6eaf2;
-  --toast-text:#12161f;
+  --toast-bg:#fafafa;
+  --toast-text:#09090b;
   color-scheme: dark;
 }
 
 @theme inline{
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
 
   --color-primary: var(--primary);
+  --color-sobre-primary: var(--sobre-primary);
+  --color-primary-texto: var(--primary-texto);
   --color-primary-dark: var(--primary-dark);
   --color-primary-light: var(--primary-light);
   --color-primary-tint: var(--primary-tint);
@@ -99,7 +114,10 @@
   --color-info: var(--info);
   --color-info-tint: var(--info-tint);
 
-  --font-sans: "Plus Jakarta Sans Variable", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  --radius-cartao: 24px;
+  --radius-campo: 16px;
 }
 
 /*
@@ -127,6 +145,20 @@ body{
   color:var(--text);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
+  font-variant-numeric:tabular-nums;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+h1,h2,h3{letter-spacing:-.02em;}
+
+/* Seletor de data/hora legível no escuro. */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.6);}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important;scroll-behavior:auto!important;}
 }
 
 /*

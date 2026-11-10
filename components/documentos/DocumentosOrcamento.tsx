@@ -19,7 +19,7 @@ import type { DocumentoGerado, Orcamento, Pagamento, TipoPagamento } from "@/lib
 function ListaFaltando({ titulo, itens }: { titulo: string; itens: string[] }) {
   if (!itens.length) return null;
   return (
-    <div className="mt-3 rounded-lg border border-danger-border bg-danger-tint p-3 text-[12.5px] text-danger" role="alert">
+    <div className="mt-3 rounded-2xl border border-danger-border bg-danger-tint p-3 text-[12.5px] text-danger" role="alert">
       <div className="mb-1 font-semibold">{titulo}</div>
       <ul className="list-disc space-y-0.5 pl-5">
         {itens.map((f) => <li key={f}>{f}</li>)}
@@ -111,7 +111,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-border p-3.5">
+      <section className="rounded-2xl border border-border p-3.5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-1.5 text-[14px] font-semibold text-text">
             <FileSignature className="h-4 w-4" strokeWidth={1.8} /> Contrato
@@ -139,7 +139,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
         </p>
       </section>
 
-      <section className="rounded-lg border border-border p-3.5">
+      <section className="rounded-2xl border border-border p-3.5">
         <h3 className="mb-1 flex items-center gap-1.5 text-[14px] font-semibold text-text">
           <Receipt className="h-4 w-4" strokeWidth={1.8} /> Pagamentos e recibos
         </h3>
@@ -153,7 +153,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
         ) : (
           <ul className="mb-3 space-y-2.5">
             {pagamentos.map((p) => (
-              <li key={p.id} className="rounded-lg border border-border p-2.5">
+              <li key={p.id} className="rounded-2xl border border-border p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[13px]">
                     <span className="font-semibold text-text">{p.tipo === "outro" && p.descricao ? p.descricao : PAGAMENTO_LABEL[p.tipo]}</span>{" "}
@@ -182,7 +182,7 @@ export function DocumentosOrcamento({ orcamento }: { orcamento: Orcamento }) {
           </ul>
         )}
 
-        <fieldset className="rounded-lg border border-dashed border-border-strong p-3">
+        <fieldset className="rounded-2xl border border-dashed border-border-strong p-3">
           <legend className="px-1.5 text-xs font-semibold text-text-muted">Registrar pagamento</legend>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <div>

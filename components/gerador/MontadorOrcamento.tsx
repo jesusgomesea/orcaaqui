@@ -149,7 +149,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
   };
 
   const blocoCliente = (
-    <fieldset className="rounded-lg border border-border p-3.5">
+    <fieldset className="rounded-2xl border border-border p-3.5">
       <legend className="px-1.5 text-xs font-semibold text-text-muted">Cliente e serviço</legend>
       <Label>Cliente</Label>
       <Select value={clienteId || undefined} onValueChange={setClienteId}>
@@ -181,13 +181,13 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
       <DialogTitle>{existente ? `Editar ${codigo}` : "Montar orçamento"}</DialogTitle>
 
       {temEj && (
-        <div className="mb-3 inline-flex rounded-lg border border-border p-0.5 text-[13px]">
+        <div className="mb-3 inline-flex rounded-2xl border border-border p-0.5 text-[13px]">
           {(["catalogo", "ej"] as const).map((a) => (
             <button
               key={a}
               type="button"
               onClick={() => setAba(a)}
-              className={cn("rounded-md px-3 py-1.5 font-medium cursor-pointer", aba === a ? "bg-primary-tint text-primary" : "text-text-muted hover:text-text")}
+              className={cn("rounded-full px-3.5 py-1.5 font-medium cursor-pointer", aba === a ? "bg-primary-tint text-primary-texto" : "text-text-muted hover:text-text")}
             >
               {a === "catalogo" ? "Meu catálogo" : "Tabela do EJ"}
             </button>
@@ -202,7 +202,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
           <div className="space-y-4">
             {blocoCliente}
 
-            <fieldset className="rounded-lg border border-border p-3.5">
+            <fieldset className="rounded-2xl border border-border p-3.5">
               <legend className="px-1.5 text-xs font-semibold text-text-muted">Serviços</legend>
               {categorias.length === 0 && (
                 <p className="text-[12.5px] text-text-muted">Cadastre serviços em Serviços para montar orçamentos por aqui.</p>
@@ -215,7 +215,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
                       const q = qtdDe(s.id);
                       const { unitario, volume } = precoUnitario(s, Math.max(1, q));
                       return (
-                        <li key={s.id} className={cn("flex items-center gap-2 rounded-lg border p-2", q ? "border-primary bg-primary-tint" : "border-border")}>
+                        <li key={s.id} className={cn("flex items-center gap-2 rounded-2xl border p-2", q ? "border-primary bg-primary-tint" : "border-border")}>
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-[13px] font-semibold text-text">{s.nome}</div>
                             <div className="text-[11.5px] text-text-muted">
@@ -249,7 +249,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
               ))}
             </fieldset>
 
-            <fieldset className="rounded-lg border border-border p-3.5">
+            <fieldset className="rounded-2xl border border-border p-3.5">
               <legend className="px-1.5 text-xs font-semibold text-text-muted">Ajustes</legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {config.deslocamentos.length > 0 && (
@@ -279,7 +279,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
           </div>
 
           <aside className="md:sticky md:top-0 md:self-start">
-            <div className="rounded-lg border border-border bg-bg p-3.5 text-[13px]">
+            <div className="rounded-2xl border border-border bg-bg p-3.5 text-[13px]">
               <div className="mb-2 font-semibold text-text">Resumo · {codigo}</div>
               {calc.linhas.length === 0 ? (
                 <p className="text-text-muted">Nenhum item ainda.</p>

@@ -5,7 +5,7 @@ function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-surface p-5 shadow-[var(--shadow)]",
+        "rounded-[var(--radius-cartao)] bg-surface p-5 shadow-[var(--shadow)] dark:shadow-none",
         className
       )}
       {...props}

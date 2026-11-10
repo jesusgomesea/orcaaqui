@@ -45,15 +45,15 @@ function EmpresasSection() {
           {state.empresas.map((emp) => (
             <div
               key={emp.id}
-              className={`flex items-center justify-between rounded-md border px-3 py-2 ${emp.id === empresaAtiva.id ? "border-primary bg-primary-tint" : "border-border"}`}
+              className={`flex items-center justify-between rounded-2xl border px-3.5 py-2.5 ${emp.id === empresaAtiva.id ? "border-primary bg-primary-tint" : "border-border"}`}
             >
               <button type="button" onClick={() => switchEmpresa(emp.id)} className="flex flex-1 items-center gap-2 text-left cursor-pointer">
                 <Building2 className="h-4 w-4 shrink-0 text-text-muted" strokeWidth={1.8} />
                 <span className="text-[13.5px] font-semibold text-text">{emp.nome || "(sem nome)"}</span>
-                {emp.id === empresaAtiva.id && <span className="text-[11px] font-semibold text-primary">ativa</span>}
+                {emp.id === empresaAtiva.id && <span className="text-[11px] font-semibold text-primary-texto">ativa</span>}
               </button>
               {state.empresas.length > 1 && (
-                <button type="button" onClick={() => handleRemover(emp)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-danger-tint hover:text-danger cursor-pointer">
+                <button type="button" onClick={() => handleRemover(emp)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-danger-tint hover:text-danger cursor-pointer">
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
                 </button>
               )}
@@ -279,7 +279,7 @@ export default function ConfigPage() {
         <fieldset>
           <legend className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Identidade</legend>
           <div className="mb-4 flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border-strong bg-bg">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border-strong bg-bg">
               {empresaAtiva.logoDataUrl ? (
                 // A logo é uma data: URL guardada no próprio estado — next/image
                 // não ajuda aqui e ainda exigiria configuração de domínio.
@@ -330,7 +330,7 @@ export default function ConfigPage() {
                   type="color"
                   value={empresaAtiva.corPrimaria}
                   onChange={(e) => set({ corPrimaria: e.target.value })}
-                  className="h-9 w-11 cursor-pointer rounded-md border border-border-strong bg-surface p-1"
+                  className="h-11 w-12 cursor-pointer rounded-xl border-0 bg-surface-2 p-1.5 sm:h-10"
                 />
                 <Input value={empresaAtiva.corPrimaria} onChange={(e) => set({ corPrimaria: e.target.value })} />
               </div>

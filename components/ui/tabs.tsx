@@ -9,7 +9,7 @@ const Tabs = TabsPrimitive.Root;
 function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn("mb-4 inline-flex gap-1 rounded-lg border border-border bg-bg p-1", className)}
+      className={cn("mb-4 inline-flex gap-1 rounded-full bg-surface-2 p-1", className)}
       {...props}
     />
   );
@@ -19,7 +19,7 @@ function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitiv
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "rounded-md px-3 py-1.5 text-[13px] font-semibold text-text-muted transition-colors cursor-pointer",
+        "rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-text-muted transition-colors cursor-pointer",
         "data-[state=active]:bg-surface data-[state=active]:text-text data-[state=active]:shadow-sm",
         className
       )}
