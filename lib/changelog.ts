@@ -18,7 +18,7 @@ export const NOVIDADES: Novidade[] = [
     tipo: "melhoria",
     titulo: "Corrija o cliente direto no contrato",
     descricao:
-      "Na janela de contrato e recibos aparece o cliente ligado ao orçamento e o que falta nele (CPF ou e-mail). Dá para editar os dados ali mesmo, sem refazer o orçamento. Se houver outro cadastro com o mesmo nome ou WhatsApp — comum quando o cliente foi criado de novo pelo Montar orçamento —, o app avisa e deixa usar esse cadastro no orçamento.",
+      "Na janela de contrato e recibos aparece o cliente ligado ao orçamento e o que falta nele (CPF ou e-mail). Dá para editar os dados ali mesmo, sem refazer o orçamento. Se houver outro cadastro com o mesmo nome ou WhatsApp — comum quando o cliente foi criado de novo pelo Montar orçamento —, o app avisa e deixa usar esse cadastro no orçamento. CPF que perdeu o zero do começo (comum ao vir de planilha) passa a ser aceito, e um CPF inválido agora diz o motivo.",
   },
   {
     id: "2026-11-10-01",

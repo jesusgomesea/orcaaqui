@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Input, Textarea, Label } from "@/components/ui/input";
+import { cpfValido, formatarCpf } from "@/lib/documentos/formatos";
 import type { Cliente } from "@/lib/tipos";
 
 export type ClienteFormDados = Omit<Cliente, "id"> & { id?: string; _isEdit: boolean };
@@ -40,7 +41,12 @@ export function ClienteForm({
         </div>
         <div>
           <Label>CPF/CNPJ</Label>
-          <Input value={f.documento} onChange={(e) => set({ documento: e.target.value })} />
+          <Input
+            value={f.documento}
+            onChange={(e) => set({ documento: e.target.value })}
+            // CPF válido sai formatado e com os zeros à esquerda que a planilha tira; CNPJ fica como está.
+            onBlur={() => cpfValido(f.documento) && set({ documento: formatarCpf(f.documento) })}
+          />
         </div>
         <div>
           <Label>Telefone/WhatsApp</Label>

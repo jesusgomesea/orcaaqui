@@ -12,6 +12,7 @@ import {
   formatarData,
   formatarReais,
   formatarTelefone,
+  motivoCpfInvalido,
   paraCentavos,
   telefoneValido,
 } from "./formatos";
@@ -67,7 +68,7 @@ function camposPrestador(p: Prestador | undefined, faltando: string[], completo:
   const cpf = texto(p?.cpf);
   exigir(faltando, nome, "Nome completo do prestador (Empresa → Contratos e recibos)");
   if (!cpf) faltando.push("CPF do prestador");
-  else if (!cpfValido(cpf)) faltando.push("CPF do prestador válido");
+  else if (!cpfValido(cpf)) faltando.push(`CPF do prestador válido (${motivoCpfInvalido(cpf)})`);
 
   const campos: Campos = { prestador_nome: nome, prestador_cpf: formatarCpf(cpf) };
   if (!completo) return campos;
@@ -102,7 +103,7 @@ function camposCliente(c: Cliente | undefined, faltando: string[], completo: boo
   const cpf = texto(c.documento);
   exigir(faltando, nome, "Nome completo do cliente");
   if (!cpf) faltando.push("CPF do cliente");
-  else if (!cpfValido(cpf)) faltando.push("CPF do cliente válido (campo CPF/CNPJ do cadastro)");
+  else if (!cpfValido(cpf)) faltando.push(`CPF do cliente válido (${motivoCpfInvalido(cpf)})`);
 
   const campos: Campos = { cliente_nome: nome, cliente_cpf: formatarCpf(cpf) };
   if (!completo) return campos;

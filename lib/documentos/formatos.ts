@@ -52,9 +52,7 @@ export function somenteDigitos(s: string | undefined | null): string {
   return String(s ?? "").replace(/\D/g, "");
 }
 
-/** Valida os dígitos verificadores do CPF. */
-export function cpfValido(cpf: string): boolean {
-  const d = somenteDigitos(cpf);
+function digitosConferem(d: string): boolean {
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
   const dv = (base: string, pesoInicial: number) => {
     let soma = 0;
@@ -65,9 +63,38 @@ export function cpfValido(cpf: string): boolean {
   return dv(d.slice(0, 9), 10) === Number(d[9]) && dv(d.slice(0, 10), 11) === Number(d[10]);
 }
 
-/** 000.000.000-00 (devolve o texto original se não tiver 11 dígitos). */
-export function formatarCpf(cpf: string): string {
+/**
+ * Os 11 dígitos do CPF, ou null se não for um CPF válido. CPF que começa com 0
+ * costuma perder os zeros à esquerda ao passar por planilha (o Excel trata como
+ * número): com 9 ou 10 dígitos, completa com zeros e aceita se os dígitos
+ * verificadores conferirem.
+ */
+export function cpfNormalizado(cpf: string): string | null {
   const d = somenteDigitos(cpf);
+  if (d.length < 9 || d.length > 11) return null;
+  const completo = d.padStart(11, "0");
+  return digitosConferem(completo) ? completo : null;
+}
+
+/** Valida os dígitos verificadores do CPF (aceita o que perdeu os zeros à esquerda). */
+export function cpfValido(cpf: string): boolean {
+  return cpfNormalizado(cpf) !== null;
+}
+
+/** Por que o CPF não passa — para a tela dizer o que conferir. Vazio = válido. */
+export function motivoCpfInvalido(cpf: string): string {
+  const d = somenteDigitos(cpf);
+  if (!d) return "sem números";
+  if (cpfNormalizado(cpf)) return "";
+  if (d.length === 14) return "parece um CNPJ (14 números); o contrato pede o CPF da pessoa";
+  if (d.length !== 11) return `tem ${d.length} números; o CPF tem 11`;
+  if (/^(\d)\1{10}$/.test(d)) return "todos os números iguais";
+  return "os 2 últimos números (dígitos verificadores) não conferem — algum número pode estar trocado";
+}
+
+/** 000.000.000-00 (devolve o texto original se não for um CPF válido nem tiver 11 dígitos). */
+export function formatarCpf(cpf: string): string {
+  const d = cpfNormalizado(cpf) ?? somenteDigitos(cpf);
   if (d.length !== 11) return cpf.trim();
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
