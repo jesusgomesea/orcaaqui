@@ -84,7 +84,7 @@ function Sidebar() {
   const classeLink = (ativo: boolean) => cn(CLASSE_ITEM, ativo ? "bg-primary-tint text-primary-dark" : "text-text-muted hover:bg-bg hover:text-text");
 
   const sync =
-    statusSincronizacao === "ocioso" ? null : statusSincronizacao === "erro" ? (
+    statusSincronizacao === "ocioso" ? null : (statusSincronizacao === "erro" || statusSincronizacao === "conflito") ? (
       <><CloudOff className="h-3 w-3 shrink-0" strokeWidth={2} /> Alterações não salvas</>
     ) : (
       <><RefreshCw className="h-3 w-3 shrink-0 animate-spin" strokeWidth={2} /> Salvando…</>
@@ -100,10 +100,10 @@ function Sidebar() {
         <div className="min-w-0 flex-1">{seletorEmpresa}</div>
         {sync && (
           <span
-            className={cn("flex shrink-0 items-center", statusSincronizacao === "erro" ? "text-danger" : "text-text-muted")}
-            title={statusSincronizacao === "erro" ? "Alterações não salvas" : "Salvando…"}
+            className={cn("flex shrink-0 items-center", (statusSincronizacao === "erro" || statusSincronizacao === "conflito") ? "text-danger" : "text-text-muted")}
+            title={(statusSincronizacao === "erro" || statusSincronizacao === "conflito") ? "Alterações não salvas" : "Salvando…"}
           >
-            {statusSincronizacao === "erro" ? <CloudOff className="h-4 w-4" strokeWidth={2} /> : <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2} />}
+            {(statusSincronizacao === "erro" || statusSincronizacao === "conflito") ? <CloudOff className="h-4 w-4" strokeWidth={2} /> : <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={2} />}
           </span>
         )}
         <BotaoTema />
@@ -196,7 +196,7 @@ function Sidebar() {
 
         <div className="mt-auto border-t border-border pt-3">
           {sync && (
-            <div className={cn("mb-2 flex items-center gap-1.5 px-1.5 text-[11px]", statusSincronizacao === "erro" ? "text-danger" : "text-text-muted")}>
+            <div className={cn("mb-2 flex items-center gap-1.5 px-1.5 text-[11px]", (statusSincronizacao === "erro" || statusSincronizacao === "conflito") ? "text-danger" : "text-text-muted")}>
               {sync}
             </div>
           )}

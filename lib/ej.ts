@@ -165,6 +165,42 @@ export function extrairRefEj(texto: string): string | null {
   return achados.length ? achados[achados.length - 1][0] : null;
 }
 
+const CATEGORIAS_EJ: CategoriaEjId[] = ["ensaio", "evento", "auxiliar", "edicao"];
+
+/**
+ * Lê de volta a escolha de uma linha `[ref EJ-…]` — o inverso de
+ * `codificarRefEj`, no mesmo formato que o site do EJ lê. Só serve para
+ * reabrir o montador; o preço continua vindo da API do EJ.
+ */
+export function decodificarRefEj(texto: string): SelecaoEj | null {
+  const linha = extrairRefEj(texto);
+  if (!linha) return null;
+  const tokens = linha.replace(/^\[ref\s+/, "").replace(/\]$/, "").trim().split(/\s+/);
+  const mapa = new Map<string, string>();
+  for (const t of tokens.slice(2)) {
+    const i = t.indexOf("=");
+    if (i > 0) mapa.set(t.slice(0, i), t.slice(i + 1));
+  }
+  const categoria = mapa.get("c") as CategoriaEjId | undefined;
+  if (!categoria || !CATEGORIAS_EJ.includes(categoria)) return null;
+  const num = (k: string) => {
+    const n = Number(mapa.get(k) ?? 0);
+    return Number.isInteger(n) && n >= 0 && n <= 9999 ? n : 0;
+  };
+  return {
+    categoria,
+    pacoteId: mapa.get("p") ?? null,
+    horasExtras: num("he"),
+    fotosExtras: num("fe"),
+    minutosPersonalizado: num("mp"),
+    fotosPersonalizado: num("fp"),
+    entregaId: mapa.get("en") ?? "padrao",
+    deslocamentoId: mapa.get("ds") ?? "ate10",
+    diariasAuxiliar: num("ax"),
+    modoAuxiliar: mapa.get("am") === "sem" ? "sem" : "com",
+  };
+}
+
 const ALFABETO = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 export function novoCodigoEj(aleatorio: () => number = Math.random): string {

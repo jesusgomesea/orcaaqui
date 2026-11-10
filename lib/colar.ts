@@ -54,6 +54,8 @@ export function tipoDeRef(texto: string): TipoRef | null {
 export interface LeituraColada {
   origem: Extract<OrigemOrcamento, "colado-ej" | "colado-orc">;
   codigoRef: string;
+  /** Linha `[ref EJ-…]` (só nas mensagens do EJ). */
+  refEj?: string;
   cliente: { nome: string; telefone: string };
   data: string;
   horario: string;
@@ -184,6 +186,7 @@ export async function lerColagemEj(
   const leitura: LeituraColada = {
     origem: "colado-ej",
     codigoRef: r.codigo,
+    refEj: linha,
     cliente: { nome: leg.nome, telefone: leg.telefone },
     data: r.data || leg.data,
     horario: r.horario || (r.data ? "" : leg.horario),
@@ -261,6 +264,7 @@ export function aprovarLeitura(empresa: Empresa, l: LeituraColada, agora: Date =
     status: "aprovado" as const,
     servicoContrato,
     codigoRef: l.codigoRef,
+    ...(l.refEj ? { refEj: l.refEj } : {}),
     sinalPercentual: l.sinalPercentual,
     moeda: l.moeda,
   };

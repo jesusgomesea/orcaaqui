@@ -42,6 +42,10 @@ Um único objeto de estado por usuário, gravado como JSON no Netlify Blobs (sto
 
 No cliente, [lib/store.tsx](lib/store.tsx) (Context API) carrega o estado ao montar e salva com debounce de 700ms — digitar num campo não dispara uma requisição por tecla. Um `pagehide` faz a última gravação pendente com `keepalive`, pra fechar a aba dentro da janela do debounce não perder a alteração. O status aparece no rodapé do Sidebar (`statusSincronizacao`).
 
+**Controle de versão (dois aparelhos).** O GET devolve `{ estado, versao }` (o etag do Blobs) e o PUT manda `{ estado, versaoBase }`; o servidor grava com `onlyIfMatch` (ou `onlyIfNew` numa conta nova) e responde **409** se outro aparelho salvou no meio ([lib/server/dados.ts](lib/server/dados.ts), corpo validado em `lerCorpoDoPut`, testado). No 409 o store para de salvar (`statusSincronizacao: "conflito"`) e mostra uma faixa com "Recarregar" — antes o último aparelho a salvar apagava em silêncio o que o outro gravou. O corpo antigo (estado solto, sem versão), de uma aba aberta antes da atualização, também vira 409.
+- Os PUTs passam por uma **fila** (`fila` no store): dois salvamentos simultâneos mandariam a mesma versão e o segundo daria falso conflito com o próprio aparelho.
+- Ao **voltar para o app** (`visibilitychange`/`focus`), sem nada pendente, o store relê o servidor e, se a versão mudou, troca o estado — o que foi salvo no outro aparelho aparece sozinho e o conflito quase não acontece.
+
 Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
 ```ts
 {
@@ -58,7 +62,7 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
       status /* rascunho | enviado | aprovado | recusado */,
       servicoContrato? /* data, horários e local do serviço moram aqui */,
       pagamentos?: [{ id, tipo /* sinal | restante | integral | outro */, valor, data, forma, descricao? }],
-      codigoRef? /* ORC-0012 | EJ-XXXXX */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
+      codigoRef? /* ORC-0012 | EJ-XXXXX */, refEj? /* linha [ref EJ-…] */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
     servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
@@ -87,9 +91,9 @@ Cada empresa é totalmente isolada (clientes/orçamentos/serviços próprios) �
 
 Status **expirado** não é gravado — é calculado na hora (`statusEfetivo` em [lib/helpers.ts](lib/helpers.ts)) comparando a validade com a data de hoje.
 
-**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em `store.tsx` numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
+**Numeração de orçamento.** `Orcamento.numero` é gravado na criação, a partir do contador `Empresa.proximoNumero`, e nunca muda. Já foi derivado da posição no array, o que renumerava todos os posteriores a cada exclusão — o cliente ficava com um PDF cujo número não existia mais no sistema. Só `addOrcamento` atribui número (depois do spread, senão duplicar herdaria o do original); `numerarOrcamentosLegados()` em [lib/estado.ts](lib/estado.ts) numera pela ordem atual o que foi gravado antes do campo existir, preservando o que essas pessoas já viam. Para exibir, `formatarNumeroOrcamento(numero)` em helpers.ts.
 
-A logo é salva como `data:` URL (base64) direto no state; o upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) rejeita arquivos acima de 1.5MB, e a rota recusa corpo acima de 8MB.
+A logo é salva como `data:` URL direto no state, por isso vai em **todo** salvamento (e o `keepalive` do `pagehide` recusa corpo acima de 64 KB). O upload em [empresa/page.tsx](app/(app)/empresa/page.tsx) comprime com `comprimirLogo` ([lib/imagem.ts](lib/imagem.ts)): no máximo 400px, WebP (PNG onde não houver), SVG passa direto — fica na casa de 10–40 KB. Logos antigas acima de 80 KB são comprimidas uma vez ao abrir a conta. A rota recusa corpo acima de 8MB.
 
 Backup/portabilidade: exportar/importar o JSON inteiro do state (botões em Empresa) — inclui todas as empresas. Serve pra guardar cópia fora do serviço ou levar tudo pra outra conta. Importar **substitui** os dados da conta, por isso pede confirmação.
 
@@ -149,6 +153,7 @@ Os componentes `Dialog`/`DialogContent` em [components/ui/dialog.tsx](components
 O prestador monta pelo catálogo ([components/gerador/MontadorOrcamento.tsx](components/gerador/MontadorOrcamento.tsx), regras em [lib/gerador.ts](lib/gerador.ts), testadas): serviços × quantidade com preço por volume (`precoUnitario`: a partir de `volumeMin`, TODAS as unidades saem por `precoVolume`), faixa de deslocamento (`config.deslocamentos`), desconto e acréscimo em valor. Total, sinal e restante ao vivo. "Enviar pelo WhatsApp" salva com `origem: "gerador"`, `codigoRef: "ORC-0012"` e status **enviado** (o botão de WhatsApp da lista também tira do rascunho).
 
 - **Nunca confiar no total escrito.** A mensagem leva `[ref ORC-0012 e=<config.codigo> v<config.versaoCatalogo> i=<Servico.codigo>:<qtd>,… d=<desconto> a=<acréscimo> ds=<faixa> dt=AAAA-MM-DD hr=HH:MM]` (campos zerados omitidos). Quem cola recalcula pelo catálogo (`recalcularRefOrc`): versão ou empresa diferente vira aviso; serviço que sumiu impede o cálculo. Os rótulos da mensagem (`*Cliente:*`, `*WhatsApp:*`, `*Serviço:*`, `*Data desejada:*`, `*Local:*`, `*Total:*`, `*Observações:*`) são os mesmos do site do EJ. Texto livre passa por `limparLivre` (uma linha, sem `[`, `]`, `*`).
+- Orçamento feito pela tabela do EJ grava a linha inteira em `Orcamento.refEj`; `decodificarRefEj` (o inverso de `codificarRefEj`) reabre o montador com a mesma escolha. Colar uma mensagem do EJ também grava `refEj`.
 - Os itens gravados levam `servicoId` (e `deslocamentoId` no item de deslocamento, marcado como adicional para o contrato). `selecaoDoOrcamento` reabre no montador; com item livre, só o formulário livre edita. Reenviar usa os preços **gravados** (`calculoDoOrcamento`), não os de hoje.
 - O número `ORC-…` é previsto como `empresaAtiva.proximoNumero` no clique — o mesmo que o `addOrcamento` atribui.
 

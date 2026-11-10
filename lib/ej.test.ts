@@ -47,6 +47,17 @@ describe("integração EJ", () => {
   });
 });
 
+test("decodificar(codificar(x)) devolve a mesma escolha", async () => {
+  const { decodificarRefEj } = await import("./ej");
+  const sel = { ...selecaoEjVazia("evento"), pacoteId: "ev-padrao3", horasExtras: 1, minutosPersonalizado: 90, fotosPersonalizado: 20, entregaId: "ev24", deslocamentoId: "10a20" };
+  const linha = codificarRefEj({ codigo: "EJ-7K2M9", versao: 5, emitidoEm: "2026-11-08", selecao: sel, data: "2026-12-20", horario: "16:00" });
+  expect(decodificarRefEj(`texto\n${linha}\n_(não apague)_`)).toEqual(sel);
+  const aux = { ...selecaoEjVazia("auxiliar"), diariasAuxiliar: 2, modoAuxiliar: "sem" as const };
+  expect(decodificarRefEj(codificarRefEj({ codigo: "EJ-AAAAA", versao: 5, emitidoEm: "2026-11-08", selecao: aux, data: "", horario: "" }))).toEqual(aux);
+  expect(decodificarRefEj("[ref EJ-AAAAA v5 c=desconhecida]")).toBeNull();
+  expect(decodificarRefEj("sem ref")).toBeNull();
+});
+
 describe("orçamento e mensagem pelo recálculo do EJ", async () => {
   const { gerarMensagemEj, itensDoRecalculoEj } = await import("./ej");
   const { calcOrcamentoTotais } = await import("./helpers");

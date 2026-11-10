@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-09-02",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Celular e computador sem um apagar o outro",
+    descricao:
+      "Se você salvar no celular e o computador estiver aberto com dados antigos, o Orça Aqui agora avisa e pede para recarregar, em vez de um aparelho apagar o que o outro salvou. Ao voltar para o app, ele já busca o que mudou. A logo da empresa passou a ser reduzida ao enviar, o que deixa o salvamento mais rápido no celular, e a mensagem de WhatsApp do orçamento livre voltou a ter as linhas em branco entre os blocos.",
+  },
+  {
     id: "2026-11-09-01",
     data: "2026-11-09",
     tipo: "correcao",

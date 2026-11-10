@@ -101,6 +101,17 @@ describe("gerarTextoWhatsapp", () => {
     expect(texto).toContain("Sinal de 40% na confirmação.");
   });
 
+  test("blocos separados por uma linha em branco", () => {
+    const texto = gerarTextoWhatsapp(orcamento(), cliente, "ORC-0001", empresa);
+    expect(texto.split("\n\n")).toHaveLength(4);
+    expect(texto).toMatch(/Cliente: Ana Souza\n\n• Ensaio/);
+    expect(texto).not.toMatch(/\n\n\n/);
+    // Sem condições nem cliente: nada de linha em branco sobrando.
+    const curto = gerarTextoWhatsapp(orcamento({ condicoes: "" }), undefined, "ORC-0001", empresa);
+    expect(curto.split("\n\n")).toHaveLength(3);
+    expect(curto.endsWith("Válido até 16/11/2026")).toBe(true);
+  });
+
   test("usa a moeda do orçamento", () => {
     const texto = gerarTextoWhatsapp(orcamento({ moeda: "USD" }), cliente, "ORC-0001", empresa);
     expect(texto).toMatch(/US\$\s200,00/);

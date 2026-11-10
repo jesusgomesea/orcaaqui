@@ -14,6 +14,7 @@ import { linkWhatsApp } from "@/lib/gerador";
 import {
   buscarCatalogoEj,
   codificarRefEj,
+  decodificarRefEj,
   gerarMensagemEj,
   itensDoRecalculoEj,
   novoCodigoEj,
@@ -51,7 +52,8 @@ export function MontadorEj({
 
   const [catalogo, setCatalogo] = useState<CatalogoEj | null>(null);
   const [erroCatalogo, setErroCatalogo] = useState("");
-  const [sel, setSel] = useState<SelecaoEj>(() => selecaoEjVazia("ensaio"));
+  // Reabrir um orçamento feito aqui volta com a mesma escolha (lida da [ref] gravada).
+  const [sel, setSel] = useState<SelecaoEj>(() => (existente?.refEj && decodificarRefEj(existente.refEj)) || selecaoEjVazia("ensaio"));
   // Reaproveita o código EJ de um orçamento que já veio daqui; senão, gera um.
   const [codigo] = useState(() => (existente?.codigoRef?.startsWith("EJ-") ? existente.codigoRef : novoCodigoEj()));
   const [emitidoEm] = useState(() => existente?.data || todayStr());
@@ -160,6 +162,7 @@ export function MontadorEj({
       },
       origem: "gerador",
       codigoRef: codigo,
+      refEj: linhaRef,
       sinalPercentual: atual.sinalPercentual,
     };
     const status = enviar && (!existente || existente.status === "rascunho") ? "enviado" : existente?.status ?? "rascunho";

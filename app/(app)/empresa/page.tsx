@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { readFileAsDataUrl, downloadFile, todayStr, MOEDAS } from "@/lib/helpers";
+import { downloadFile, todayStr, MOEDAS } from "@/lib/helpers";
+import { comprimirLogo, tamanhoDataUrl } from "@/lib/imagem";
 import { cpfValido, formatarCpf, formatarTelefone, telefoneValido } from "@/lib/documentos/formatos";
 import type { CodigoMoeda, Empresa, EstadoImportado, Prestador } from "@/lib/tipos";
 
@@ -222,15 +223,21 @@ export default function ConfigPage() {
       input.value = "";
       return;
     }
-    if (file.size > 1.5 * 1024 * 1024) {
-      toast.error("Imagem muito grande. Use um arquivo de até 1,5MB.");
+    // A logo é comprimida antes de gravar (lib/imagem.ts); o limite só barra arquivo absurdo.
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Use um arquivo de até 10MB.");
       input.value = "";
       return;
     }
-    const dataUrl = await readFileAsDataUrl(file);
-    set({ logoDataUrl: dataUrl });
-    input.value = "";
-    toast.success("Logo atualizada.");
+    try {
+      const dataUrl = await comprimirLogo(file);
+      set({ logoDataUrl: dataUrl });
+      toast.success(`Logo atualizada (${tamanhoDataUrl(dataUrl)}).`);
+    } catch {
+      toast.error("Não foi possível ler esta imagem. Tente PNG, JPG ou WebP.");
+    } finally {
+      input.value = "";
+    }
   };
 
   const handleExport = () => {
