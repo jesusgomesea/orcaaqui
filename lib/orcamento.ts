@@ -4,6 +4,7 @@
 
 import { addDaysStr, calcOrcamentoTotais, escapeHtml, formatDateBR, formatMoney, logoSegura, todayStr } from "./helpers";
 import type { Cliente, Empresa, Orcamento, ServicoContrato } from "./tipos";
+import { linhasContrapartidas, resumoParceria, textoParceria } from "./parceria";
 
 export function servicoContratoVazio(): ServicoContrato {
   return {
@@ -60,7 +61,7 @@ export function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, n
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:12px;color:#667085;letter-spacing:.04em;text-transform:uppercase;font-weight:700;">Orçamento</div>
+          <div style="font-size:12px;color:#667085;letter-spacing:.04em;text-transform:uppercase;font-weight:700;">${o.parceria ? "Proposta de parceria" : "Orçamento"}</div>
           <div style="font-size:20px;font-weight:800;color:${cor};">${escapeHtml(numero)}</div>
         </div>
       </div>
@@ -103,6 +104,8 @@ export function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, n
         </div>
       </div>
 
+      ${blocoParceriaHtml(o, moeda)}
+
       <div style="margin-top:28px;padding:16px 18px;background:#f6f5f1;border-radius:10px;font-size:12.5px;line-height:1.6;">
         <div style="font-weight:700;margin-bottom:4px;">Condições de pagamento</div>
         <div style="color:#333;white-space:pre-wrap;">${escapeHtml(o.condicoes || "-")}</div>
@@ -117,6 +120,22 @@ export function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, n
   `;
 }
 
+/** Seção "Parceria" do PDF: as contrapartidas e quanto fica em dinheiro. Tudo escapado. */
+function blocoParceriaHtml(o: Orcamento, moeda: Orcamento["moeda"]): string {
+  if (!o.parceria) return "";
+  const r = resumoParceria(o);
+  const itens = linhasContrapartidas(o.parceria, moeda)
+    .map((l) => `<li style="margin:2px 0;">${escapeHtml(l)}</li>`)
+    .join("");
+  return `
+      <div style="margin-top:24px;padding:16px 18px;border:1px solid #e4e4e7;border-radius:10px;font-size:12.5px;line-height:1.6;">
+        <div style="font-weight:700;margin-bottom:4px;">Parceria — o que você oferece em troca</div>
+        ${itens ? `<ul style="margin:4px 0 8px;padding-left:18px;">${itens}</ul>` : ""}
+        ${r.desconto > 0 ? `<div style="color:#333;">Valor cheio ${formatMoney(r.valorCheio, moeda)} · desconto de parceria ${formatMoney(r.desconto, moeda)}</div>` : ""}
+        <div style="font-weight:700;">${r.emDinheiro > 0 ? `Em dinheiro: ${formatMoney(r.emDinheiro, moeda)}` : "Sem pagamento em dinheiro"}</div>
+      </div>`;
+}
+
 export function gerarTextoWhatsapp(o: Orcamento, cliente: Cliente | undefined, numero: string, empresa: Empresa) {
   const moeda = o.moeda || empresa.moeda || "BRL";
   const { total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
@@ -126,8 +145,9 @@ export function gerarTextoWhatsapp(o: Orcamento, cliente: Cliente | undefined, n
   // Blocos separados por linha em branco. Antes um `.filter(Boolean)` apagava
   // também as linhas vazias de separação, e a mensagem chegava toda grudada.
   const blocos = [
-    [`*Orçamento ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`, cliente ? `Cliente: ${cliente.nome}` : ""],
+    [`*${o.parceria ? "Proposta de parceria" : "Orçamento"} ${numero}*${empresa.nome ? " — " + empresa.nome : ""}`, cliente ? `Cliente: ${cliente.nome}` : ""],
     [itens],
+    [textoParceria(o, moeda)],
     [`*Total: ${formatMoney(total, moeda)}*`, `Válido até ${formatDateBR(validoAte)}`],
     [o.condicoes.trim()],
   ];

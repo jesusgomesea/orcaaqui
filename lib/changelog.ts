@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-09-04",
+    data: "2026-11-09",
+    tipo: "novidade",
+    titulo: "Parcerias",
+    descricao:
+      "Marque um orçamento como \"É uma parceria\" e cadastre o que o parceiro dá em troca: divulgação (posts, stories, reels, link na bio), permuta com valor estimado, indicação de clientes ou outra contrapartida, cada uma com quantidade e prazo. Use o desconto para o que não for pago em dinheiro. A proposta sai no PDF e no WhatsApp, e na Agenda você registra o que o parceiro já cumpriu (com o link do post), vendo o que está pendente ou atrasado.",
+  },
+  {
     id: "2026-11-09-03",
     data: "2026-11-09",
     tipo: "novidade",

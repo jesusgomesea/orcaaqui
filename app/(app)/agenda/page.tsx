@@ -127,7 +127,7 @@ export default function AgendaPage() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13.5px] font-semibold text-text">{i.clienteNome}</div>
                       <div className="truncate text-[12px] text-text-muted">
-                        {[i.orcamento?.servicoContrato?.servico, i.local, i.orcamento?.codigoRef].filter(Boolean).join(" · ") || "—"}
+                        {[i.orcamento?.parceria ? "Parceria" : "", i.orcamento?.servicoContrato?.servico, i.local, i.orcamento?.codigoRef].filter(Boolean).join(" · ") || "—"}
                       </div>
                     </div>
                     {/* No celular, etapa e valor descem para baixo do nome (a linha não espreme o cliente). */}

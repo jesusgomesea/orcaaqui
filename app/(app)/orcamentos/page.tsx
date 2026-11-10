@@ -17,6 +17,8 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { TableWrap, Table, Thead, Th, Tr, Td } from "@/components/ui/table";
 import { DocumentosOrcamento } from "@/components/documentos/DocumentosOrcamento";
+import { EditorParceria } from "@/components/parceria/EditorParceria";
+import { textoParceria } from "@/lib/parceria";
 import { limparImpressaoDocx } from "@/lib/documentosImpressao";
 import { MontadorOrcamento } from "@/components/gerador/MontadorOrcamento";
 import { calculoDoOrcamento, gerarMensagemOrcamento, linkWhatsApp, refDaSelecao, selecaoDoOrcamento } from "@/lib/gerador";
@@ -262,6 +264,8 @@ function OrcamentoForm({
         />
       )}
 
+      <EditorParceria orcamento={f} moeda={f.moeda} onChange={(parceria) => set({ parceria })} />
+
       <fieldset className="mb-3.5 rounded-2xl border border-border p-3.5">
         <legend className="px-1.5 text-xs font-semibold text-text-muted">Condições e observações</legend>
         <div className="mb-3"><Label>Condições de pagamento</Label><Textarea rows={2} value={f.condicoes} onChange={(e) => set({ condicoes: e.target.value })} /></div>
@@ -399,6 +403,7 @@ export default function OrcamentosPage() {
         emitidoEm: o.data,
         validadeDias: o.validadeDias,
         ref: refDaSelecao(sel, { codigo: numero, data: sc?.dataServico ?? "", horario: sc?.horarioInicio ?? "" }, empresaAtiva),
+        parceria: textoParceria(o, o.moeda || empresaAtiva.moeda) || undefined,
       });
     } else {
       texto = gerarTextoWhatsapp(o, cliente, numero, empresaAtiva);
@@ -473,6 +478,7 @@ export default function OrcamentosPage() {
                         <div className="text-[13.5px] font-semibold text-text">
                           {formatarNumeroOrcamento(o.numero)}
                           {o.codigoRef?.startsWith("EJ-") && <span className="ml-1.5 text-[11.5px] font-normal text-text-muted">{o.codigoRef}</span>}
+                          {o.parceria && <Badge tone="green" className="ml-1.5 align-middle">Parceria</Badge>}
                         </div>
                         <div className="truncate text-[13px] text-text">{clienteNome(o.clienteId)}</div>
                       </div>
@@ -503,6 +509,7 @@ export default function OrcamentosPage() {
                         <Td className="font-semibold whitespace-nowrap">
                           {formatarNumeroOrcamento(o.numero)}
                           {o.codigoRef?.startsWith("EJ-") && <div className="text-[11px] font-normal text-text-muted">{o.codigoRef}</div>}
+                          {o.parceria && <div><Badge tone="green">Parceria</Badge></div>}
                         </Td>
                         <Td>{clienteNome(o.clienteId)}</Td>
                         <Td className="whitespace-nowrap">{formatDateBR(o.data)}</Td>

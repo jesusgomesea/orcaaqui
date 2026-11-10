@@ -102,6 +102,41 @@ export interface Orcamento {
   /** % do sinal combinado neste orçamento; ausente = o da empresa (`config.sinalPercentual`). */
   sinalPercentual?: number;
   origem?: OrigemOrcamento;
+  /**
+   * Presente = é uma PARCERIA: além do que você entrega (os itens), o parceiro
+   * "paga" com contrapartidas (divulgação, permuta, indicação…). A parte em
+   * dinheiro, se houver, é o total do orçamento (itens − desconto de parceria).
+   */
+  parceria?: Parceria;
+}
+
+export type TipoContrapartida = "divulgacao" | "permuta" | "indicacao" | "outra";
+
+/** Cada vez que o parceiro cumpre um pedaço (um post, uma indicação…). */
+export interface RegistroContrapartida {
+  id: string;
+  /** YYYY-MM-DD */
+  data: string;
+  /** Link do post, nome de quem foi indicado… */
+  detalhe: string;
+}
+
+export interface Contrapartida {
+  id: string;
+  tipo: TipoContrapartida;
+  /** "Post no feed marcando @eluan.jesus", "Maquiagem da noiva"… */
+  descricao: string;
+  /** Quantas vezes (posts, stories, indicações…). Cumprida quando os registros chegam aqui. */
+  quantidade: number;
+  /** Até quando, YYYY-MM-DD; vazio = sem prazo. */
+  prazo: string;
+  /** Permuta: quanto vale o que o parceiro dá (moeda do orçamento). */
+  valorEstimado: number;
+  registros: RegistroContrapartida[];
+}
+
+export interface Parceria {
+  contrapartidas: Contrapartida[];
 }
 
 export type UnidadeServico = "un" | "hora" | "foto" | "dia" | "km";

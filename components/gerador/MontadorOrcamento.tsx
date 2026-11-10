@@ -23,7 +23,9 @@ import {
   selecaoVazia,
   type SelecaoGerador,
 } from "@/lib/gerador";
-import type { Orcamento } from "@/lib/tipos";
+import type { Orcamento, Parceria } from "@/lib/tipos";
+import { EditorParceria } from "@/components/parceria/EditorParceria";
+import { textoParceria } from "@/lib/parceria";
 import { MontadorEj } from "./MontadorEj";
 
 const NOVO_CLIENTE = "__novo__";
@@ -50,6 +52,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
   const [horario, setHorario] = useState(sc.horarioInicio);
   const [local, setLocal] = useState(sc.local);
   const [observacoes, setObservacoes] = useState(existente?.observacoes ?? "");
+  const [parceria, setParceria] = useState<Parceria | undefined>(existente?.parceria);
   const [sel, setSel] = useState<SelecaoGerador>(() => (existente && selecaoDoOrcamento(existente)) || selecaoVazia());
 
   const pct = existente?.sinalPercentual ?? config.sinalPercentual;
@@ -73,6 +76,8 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
     });
   };
 
+  // Itens/desconto no formato de orçamento, para o resumo e o texto da parceria.
+  const paraResumo = { itens: itensDoCalculo(calc, () => ""), desconto: calc.desconto, descontoTipo: "valor" as const, acrescimo: calc.acrescimo };
   const numero = existente?.numero ?? empresaAtiva.proximoNumero;
   const codigo = formatarNumeroOrcamento(numero);
 
@@ -111,6 +116,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
       origem: "gerador",
       codigoRef: codigo,
       sinalPercentual: pct,
+      parceria,
     };
     const status = enviar && (!existente || existente.status === "rascunho") ? "enviado" : existente?.status ?? "rascunho";
 
@@ -139,6 +145,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
         emitidoEm: existente?.data || todayStr(),
         validadeDias: existente?.validadeDias ?? config.validadeDias,
         ref: refDaSelecao(sel, { codigo, data, horario }, empresaAtiva),
+        parceria: textoParceria({ ...paraResumo, parceria }, moeda) || undefined,
       });
       window.open(linkWhatsApp(cliente.telefone, texto), "_blank", "noopener,noreferrer");
       toast.success(`Orçamento ${codigo} salvo como enviado.`);
@@ -276,6 +283,8 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
                 </div>
               </div>
             </fieldset>
+
+            <EditorParceria orcamento={{ ...paraResumo, parceria }} moeda={moeda} onChange={setParceria} />
           </div>
 
           <aside className="md:sticky md:top-0 md:self-start">
