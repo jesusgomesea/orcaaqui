@@ -7,6 +7,7 @@
 
 import { NOVIDADES } from "./changelog";
 import { uuid } from "./helpers";
+import { normalizarParceria } from "./parceria";
 import {
   ETAPA_CANCELADO,
   type Agendamento,
@@ -231,7 +232,13 @@ export function mergeEmpresa(parcial: Partial<Empresa>): Empresa {
   return numerarOrcamentosLegados({
     ...base,
     clientes: Array.isArray(base.clientes) ? base.clientes : [],
-    orcamentos: Array.isArray(base.orcamentos) ? base.orcamentos : [],
+    orcamentos: (Array.isArray(base.orcamentos) ? base.orcamentos : []).map((o) => {
+      if (!("parceria" in o)) return o;
+      // Parceria inválida vira orçamento comum (sem a chave), nunca quebra a tela.
+      const { parceria, ...resto } = o;
+      const limpa = normalizarParceria(parceria);
+      return limpa ? { ...resto, parceria: limpa } : resto;
+    }),
     servicos: normalizarServicos(Array.isArray(base.servicos) ? base.servicos : []),
     config: normalizarConfig(parcial.config, id),
     agendamentos: normalizarAgendamentos(parcial.agendamentos),

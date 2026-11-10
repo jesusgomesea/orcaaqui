@@ -247,3 +247,20 @@ describe("códigos e versão do catálogo", () => {
     expect(mudouPreco(s, { ...s, precoVolume: 8, volumeMin: 10 })).toBe(true);
   });
 });
+
+describe("normalizar — parceria", () => {
+  test("parceria válida fica, inválida some, orçamento comum não ganha a chave", () => {
+    const e = mergeEmpresa({
+      id: "x",
+      orcamentos: [
+        { id: "o1", numero: 1, parceria: { contrapartidas: [{ id: "c", tipo: "divulgacao", descricao: "Post", quantidade: 2, prazo: "", valorEstimado: 0, registros: [] }] } },
+        { id: "o2", numero: 2, parceria: "lixo" },
+        { id: "o3", numero: 3 },
+      ] as never,
+    });
+    expect(e.orcamentos[0].parceria?.contrapartidas[0].descricao).toBe("Post");
+    expect("parceria" in e.orcamentos[1]).toBe(false);
+    expect("parceria" in e.orcamentos[2]).toBe(false);
+    expect(mergeEmpresa(structuredClone(e))).toEqual(e);
+  });
+});

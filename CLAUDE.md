@@ -62,7 +62,8 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
       status /* rascunho | enviado | aprovado | recusado */,
       servicoContrato? /* data, horários e local do serviço moram aqui */,
       pagamentos?: [{ id, tipo /* sinal | restante | integral | outro */, valor, data, forma, descricao? }],
-      codigoRef? /* ORC-0012 | EJ-XXXXX */, refEj? /* linha [ref EJ-…] */, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
+      codigoRef? /* ORC-0012 | EJ-XXXXX */, refEj? /* linha [ref EJ-…] */,
+      parceria?: { contrapartidas: [{ id, tipo /* divulgacao | permuta | indicacao | outra */, descricao, quantidade, prazo, valorEstimado, registros: [{ id, data, detalhe }] }] }, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
     servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
@@ -176,6 +177,14 @@ Fluxo: o prestador envia pelo gerador → o cliente aprova → o prestador **col
 - **Detalhe** ([components/agenda/DetalheAgendamento.tsx](components/agenda/DetalheAgendamento.tsx)): data/horário/local editam o `servicoContrato` do orçamento; pagamentos editam `Orcamento.pagamentos` (o primeiro sugere o sinal; registrar o sinal avança para "Sinal pago" se a etapa existir); `outro` exige descrição. Excluir o agendamento não apaga o orçamento.
 - **Números** (`resumoAgenda` em [lib/agenda.ts](lib/agenda.ts)): "a receber" segue o painel do EJ — só o que já passou da primeira etapa e só na moeda da empresa.
 - Botão "Colar" do navegador: celulares costumam negar `navigator.clipboard.readText()`; o erro vira aviso para colar à mão, nunca silêncio.
+
+## Parcerias
+Uma parceria é um **orçamento com `parceria`** ([lib/parceria.ts](lib/parceria.ts), testado): o que você entrega continua nos itens (e fotos/prazo em `servicoContrato`); o parceiro "paga" com **contrapartidas** — divulgação, permuta (com valor estimado), indicação de clientes ou outra — cada uma com quantidade e prazo. A parte em dinheiro é o total do orçamento: o "desconto de parceria" é o desconto do próprio orçamento (100% = sem dinheiro). Por isso sinal, pagamentos, "a receber" e recibos funcionam sem mudança.
+
+- Liga em "É uma parceria" no formulário livre e no montador ([EditorParceria](components/parceria/EditorParceria.tsx)). PDF e WhatsApp viram "Proposta de parceria", com o bloco `textoParceria`/`blocoParceriaHtml` (texto livre limpo de `[`, `]`, `*` e escapado no HTML). No gerador, o bloco vai antes do total; a `[ref]` não muda (contrapartida não entra no recálculo, e colar de volta preserva a parceria gravada).
+- **Acompanhamento** na Agenda ([AcompanharParceria](components/parceria/AcompanharParceria.tsx)): cada vez que o parceiro cumpre um pedaço (um post, uma indicação) vira um `registro` (data + link/nome); cumprida quando os registros chegam à `quantidade` (`progresso`). Pendente com prazo vencido aparece como atrasada.
+- `normalizarParceria` (via `mergeEmpresa`) limpa o que vier de backup; parceria inválida vira orçamento comum.
+- O contrato .docx é de prestação de serviço: parceria sem valor em dinheiro não gera contrato (o modelo exige valor). Contrato de parceria continua fora do sistema.
 
 ## Netlify Blobs: armadilhas (já derrubaram o painel do EJ)
 Todo acesso ao Blobs passa por `storeBlobs()` em [lib/server/blobs.ts](lib/server/blobs.ts) — **nunca chamar `getStore` direto**. Ele entrega ao Blobs um `fetch` próprio que resolve três problemas:

@@ -345,6 +345,8 @@ export interface DadosMensagem {
   emitidoEm: string;
   validadeDias: number;
   ref: RefOrc;
+  /** Bloco "Parceria" (de `textoParceria`), quando o orçamento é uma parceria. */
+  parceria?: string;
 }
 
 /**
@@ -380,6 +382,7 @@ export function gerarMensagemOrcamento(calc: CalculoGerador, m: DadosMensagem): 
   if (calc.acrescimo > 0) extras.push(`*Acréscimo:* ${$(calc.acrescimo)}`);
   if (calc.prazos.length) extras.push(`*Prazo de entrega:* ${limparLivre(calc.prazos.join(" · "))}`);
   if (extras.length) l.push("", ...extras);
+  if (m.parceria) l.push("", m.parceria);
 
   l.push("");
   l.push(`*Total:* ${$(calc.total)}`);
