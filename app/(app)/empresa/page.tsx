@@ -13,7 +13,7 @@ import { Input, Textarea, Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { downloadFile, todayStr, MOEDAS } from "@/lib/helpers";
 import { comprimirLogo, tamanhoDataUrl } from "@/lib/imagem";
-import { cpfValido, formatarCpf, formatarTelefone, telefoneValido } from "@/lib/documentos/formatos";
+import { cpfValido, formatarCpf, formatarTelefone, motivoCpfInvalido, telefoneValido } from "@/lib/documentos/formatos";
 import type { CodigoMoeda, Empresa, EstadoImportado, Prestador } from "@/lib/tipos";
 
 function EmpresasSection() {
@@ -141,7 +141,7 @@ function PrestadorSection() {
   const p = { ...PRESTADOR_VAZIO, ...empresaAtiva.prestador };
   const set = (patch: Partial<Prestador>) => updateEmpresaAtiva({ prestador: { ...p, ...patch } });
 
-  const avisoCpf = p.cpf && !cpfValido(p.cpf) ? "CPF inválido." : "";
+  const avisoCpf = p.cpf && !cpfValido(p.cpf) ? `CPF inválido: ${motivoCpfInvalido(p.cpf)}.` : "";
   const avisoWhats = p.whatsapp && !telefoneValido(p.whatsapp) ? "Use o formato (00) 00000-0000." : "";
 
   return (

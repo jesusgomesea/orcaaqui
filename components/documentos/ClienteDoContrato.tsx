@@ -10,7 +10,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { ClienteForm, type ClienteFormDados } from "@/components/clientes/ClienteForm";
-import { cpfValido, emailValido } from "@/lib/documentos/formatos";
+import { cpfValido, emailValido, motivoCpfInvalido } from "@/lib/documentos/formatos";
 import { clientesParecidos } from "@/lib/orcamento";
 import type { Cliente, Orcamento } from "@/lib/tipos";
 
@@ -84,6 +84,9 @@ export function ClienteDoContrato({ orcamento }: { orcamento: Orcamento }) {
             CPF {cliente.documento || "—"} · {cliente.email || "sem e-mail"}
             {cliente.telefone ? ` · ${cliente.telefone}` : ""}
           </div>
+          {cliente.documento.trim() && !cpfValido(cliente.documento) && (
+            <p className="mt-1 text-[12px] text-warning">CPF: {motivoCpfInvalido(cliente.documento)}.</p>
+          )}
         </div>
       ) : (
         <p className="text-[12.5px] text-danger">O cliente deste orçamento foi removido. Escolha outro abaixo.</p>

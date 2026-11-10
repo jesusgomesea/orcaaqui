@@ -10,6 +10,7 @@ import { valorPorExtenso, dataPorExtenso, numeroPorExtenso } from "./extenso";
 import {
   calcularSinal,
   cpfValido,
+  motivoCpfInvalido,
   formatarCpf,
   formatarNumeroDocumento,
   formatarReais,
@@ -61,6 +62,19 @@ test("formatos", () => {
   assert.ok(cpfValido("529.982.247-25"));
   assert.ok(!cpfValido("529.982.247-24"));
   assert.ok(!cpfValido("111.111.111-11"));
+  // CPF que começa com 0 e perdeu os zeros na planilha: completa se os dígitos conferirem.
+  assert.ok(cpfValido("1234567890"));
+  assert.equal(formatarCpf("1234567890"), "012.345.678-90");
+  assert.ok(cpfValido("345678958"));
+  assert.equal(formatarCpf("345678958"), "003.456.789-58");
+  assert.ok(!cpfValido("1234567891"));
+  assert.ok(!cpfValido("12345678"), "8 dígitos é curto demais mesmo completando");
+  // O motivo diz o que conferir.
+  assert.equal(motivoCpfInvalido("529.982.247-25"), "");
+  assert.match(motivoCpfInvalido("529.982.247-24"), /não conferem/);
+  assert.match(motivoCpfInvalido("12.345.678/0001-95"), /CNPJ/);
+  assert.match(motivoCpfInvalido("1234567"), /tem 7 números/);
+
   assert.equal(formatarTelefone("86999998888"), "(86) 99999-8888");
   assert.equal(formatarTelefone("+55 86 99999-8888"), "(86) 99999-8888");
   assert.equal(formatarNumeroDocumento(1, 2026), "001/2026");
