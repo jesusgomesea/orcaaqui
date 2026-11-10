@@ -14,14 +14,20 @@ import { formatMoney } from "@/lib/helpers";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { nomeUnidade, UNIDADES } from "@/lib/gerador";
-import type { Servico, UnidadeServico } from "@/lib/tipos";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Servico, TipoCatalogo, UnidadeServico } from "@/lib/tipos";
 
 
 type ServicoForm = Omit<Servico, "id"> & { id?: string; _isEdit: boolean };
 
-function servicoVazio(): Omit<Servico, "id"> {
-  return { categoria: "", nome: "", descricao: "", valor: 0 };
+function servicoVazio(tipo: TipoCatalogo): Omit<Servico, "id"> {
+  return { categoria: "", nome: "", descricao: "", valor: 0, ...(tipo === "produto" ? { tipo } : {}) };
 }
+
+const ehProduto = (s: Pick<Servico, "tipo">) => s.tipo === "produto";
+const nomeTipo = (s: Pick<Servico, "tipo">) => (ehProduto(s) ? "produto" : "serviço");
+
+type Filtro = "todos" | TipoCatalogo;
 
 function ServicoForm({
   servico,
@@ -38,7 +44,7 @@ function ServicoForm({
   const temVolume = f.precoVolume !== undefined || f.volumeMin !== undefined;
 
   const handleSave = () => {
-    if (!f.nome.trim()) { toast.error("Informe o nome do serviço."); return; }
+    if (!f.nome.trim()) { toast.error(`Informe o nome do ${nomeTipo(f)}.`); return; }
     if (temVolume) {
       if (!f.volumeMin || f.volumeMin < 2) { toast.error("A quantidade mínima do preço por volume precisa ser 2 ou mais."); return; }
       if (f.precoVolume === undefined || f.precoVolume >= f.valor) { toast.error("O preço por volume precisa ser menor que o valor padrão."); return; }
@@ -48,11 +54,21 @@ function ServicoForm({
 
   return (
     <>
-      <DialogTitle>{servico._isEdit ? "Editar" : "Novo"} serviço</DialogTitle>
+      <DialogTitle>{servico._isEdit ? "Editar" : "Novo"} {nomeTipo(f)}</DialogTitle>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Label>Tipo</Label>
+          <Select value={f.tipo ?? "servico"} onValueChange={(v) => set({ tipo: v === "produto" ? "produto" : undefined })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="servico">Serviço — o que você faz (ensaio, cobertura, edição)</SelectItem>
+              <SelectItem value="produto">Produto — o que você entrega (álbum, pendrive, quadro)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div>
           <Label>Categoria</Label>
-          <Input value={f.categoria} onChange={(e) => set({ categoria: e.target.value })} placeholder="Ex: Ensaios" />
+          <Input value={f.categoria} onChange={(e) => set({ categoria: e.target.value })} placeholder={ehProduto(f) ? "Ex: Álbuns" : "Ex: Ensaios"} />
         </div>
         <div>
           <Label>Nome *</Label>
@@ -122,9 +138,14 @@ export default function ServicosPage() {
   const [modalServico, setModalServico] = useState<ServicoForm | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const list = [...empresaAtiva.servicos].sort((a, b) => (a.categoria + a.nome).localeCompare(b.categoria + b.nome));
+  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const qtdProdutos = empresaAtiva.servicos.filter(ehProduto).length;
+  const qtdServicos = empresaAtiva.servicos.length - qtdProdutos;
+  const list = [...empresaAtiva.servicos]
+    .filter((s) => filtro === "todos" || (filtro === "produto") === ehProduto(s))
+    .sort((a, b) => (a.categoria + a.nome).localeCompare(b.categoria + b.nome));
 
-  const openNovo = () => { setModalServico({ ...servicoVazio(), _isEdit: false }); setModalOpen(true); };
+  const openNovo = (tipo: TipoCatalogo) => { setModalServico({ ...servicoVazio(tipo), _isEdit: false }); setModalOpen(true); };
   const openEditar = (s: Servico) => { setModalServico({ ...s, _isEdit: true }); setModalOpen(true); };
 
   const handleSave = (dados: ServicoForm) => {
@@ -132,27 +153,37 @@ export default function ServicosPage() {
     if (_isEdit && id) updateServico(id, campos);
     else addServico(campos);
     setModalOpen(false);
-    toast.success("Serviço salvo.");
+    toast.success(ehProduto(dados) ? "Produto salvo." : "Serviço salvo.");
   };
 
   const handleExcluir = (s: Servico) => {
     if (!confirm(`Confirma a exclusão de "${s.nome}"?`)) return;
     removeServico(s.id);
-    toast.success("Serviço excluído.");
+    toast.success(ehProduto(s) ? "Produto excluído." : "Serviço excluído.");
   };
 
   return (
     <div>
-      <h1 className="mb-5 text-[21px] font-bold text-text">Catálogo de serviços</h1>
+      <h1 className="mb-5 text-[21px] font-bold text-text">Serviços e produtos</h1>
       <p className="mb-4 text-[13px] text-text-muted">
-        Cadastre seus serviços com preço padrão. Eles alimentam o gerador de orçamento (com preço por volume e prazo) e o seletor do formulário livre. Mudar um preço avisa, ao colar uma mensagem antiga, que a tabela mudou.
+        Cadastre o que você faz (serviços) e o que você entrega (produtos, como álbum ou pendrive), por categoria e com preço padrão. Os dois alimentam o gerador de orçamento (com preço por volume e prazo) e o seletor do formulário livre. Mudar um preço avisa, ao colar uma mensagem antiga, que a tabela mudou.
       </p>
-      <div className="mb-4 flex gap-2.5">
-        <Button onClick={openNovo}>+ Novo serviço</Button>
+      <div className="mb-4 flex flex-wrap gap-2.5">
+        <Button onClick={() => openNovo("servico")}>+ Novo serviço</Button>
+        <Button variant="secondary" onClick={() => openNovo("produto")}>+ Novo produto</Button>
       </div>
+      <Tabs value={filtro} onValueChange={(v) => setFiltro(v as Filtro)}>
+        <TabsList>
+          <TabsTrigger value="todos">Todos ({empresaAtiva.servicos.length})</TabsTrigger>
+          <TabsTrigger value="servico">Serviços ({qtdServicos})</TabsTrigger>
+          <TabsTrigger value="produto">Produtos ({qtdProdutos})</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <Card className="p-0 md:p-5">
         {list.length === 0 ? (
-          <EmptyState message="Nenhum serviço cadastrado ainda." />
+          <EmptyState
+            message={filtro === "produto" ? "Nenhum produto cadastrado ainda." : filtro === "servico" ? "Nenhum serviço cadastrado ainda." : "Nada cadastrado ainda."}
+          />
         ) : (
           <>
           <ul className="divide-y divide-border md:hidden">
@@ -160,7 +191,7 @@ export default function ServicosPage() {
               <li key={s.id} className="flex items-center gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13.5px] font-semibold text-text">
-                    {s.nome} {s.ativo === false && <Badge>Inativo</Badge>}
+                    {s.nome} {ehProduto(s) && <Badge tone="green">Produto</Badge>} {s.ativo === false && <Badge>Inativo</Badge>}
                   </div>
                   <div className="text-[12px] text-text-muted">
                     {formatMoney(s.valor, empresaAtiva.moeda)} / {nomeUnidade(s.unidade)}
@@ -187,7 +218,7 @@ export default function ServicosPage() {
                   <Tr key={s.id}>
                     <Td>{s.categoria || "-"}</Td>
                     <Td className="font-semibold">
-                      {s.nome} {s.ativo === false && <Badge>Inativo</Badge>}
+                      {s.nome} {ehProduto(s) && <Badge tone="green">Produto</Badge>} {s.ativo === false && <Badge>Inativo</Badge>}
                     </Td>
                     <Td>
                       {formatMoney(s.valor, empresaAtiva.moeda)}

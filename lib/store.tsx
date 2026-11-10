@@ -26,6 +26,7 @@ import type {
   EstadoApp,
   EstadoImportado,
   Orcamento,
+  Saida,
   Servico,
 } from "./tipos";
 
@@ -97,6 +98,9 @@ interface StoreValue {
   agendarOrcamento: (orcamentoId: string) => { agendamentoId: string; jaExistia: boolean } | null;
   updateAgendamento: (id: string, alterar: (a: Agendamento) => Agendamento) => void;
   removeAgendamento: (id: string) => void;
+  addSaida: (saida: Omit<Saida, "id">) => Saida;
+  updateSaida: (id: string, patch: Partial<Omit<Saida, "id">>) => void;
+  removeSaida: (id: string) => void;
   /**
    * Grava agora o que estiver pendente (sem esperar o debounce). Usado antes
    * de gerar contrato/recibo, porque o servidor lê os dados já gravados.
@@ -398,7 +402,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patchEmpresaAtiva]
   );
   const removeOrcamento = useCallback(
-    (id: string) => patchEmpresaAtiva((e) => ({ ...e, orcamentos: e.orcamentos.filter((o) => o.id !== id) })),
+    (id: string) =>
+      patchEmpresaAtiva((e) => ({
+        ...e,
+        orcamentos: e.orcamentos.filter((o) => o.id !== id),
+        // A saída continua (o dinheiro saiu); só perde o vínculo com o trabalho.
+        saidas: e.saidas.map((sd) => (sd.orcamentoId === id ? { ...sd, orcamentoId: undefined } : sd)),
+      })),
     [patchEmpresaAtiva]
   );
 
@@ -491,6 +501,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patchEmpresaAtiva]
   );
 
+  const addSaida = useCallback(
+    (saida: Omit<Saida, "id">) => {
+      const nova: Saida = { ...saida, id: uuid() };
+      patchEmpresaAtiva((e) => ({ ...e, saidas: [...e.saidas, nova] }));
+      return nova;
+    },
+    [patchEmpresaAtiva]
+  );
+  const updateSaida = useCallback(
+    (id: string, patch: Partial<Omit<Saida, "id">>) =>
+      patchEmpresaAtiva((e) => ({ ...e, saidas: e.saidas.map((sd) => (sd.id === id ? { ...sd, ...patch } : sd)) })),
+    [patchEmpresaAtiva]
+  );
+  const removeSaida = useCallback(
+    (id: string) => patchEmpresaAtiva((e) => ({ ...e, saidas: e.saidas.filter((sd) => sd.id !== id) })),
+    [patchEmpresaAtiva]
+  );
+
   const value = useMemo<StoreValue | null>(
     () =>
       state && empresaAtiva
@@ -522,6 +550,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             agendarOrcamento: agendarOrcamentoAtivo,
             updateAgendamento,
             removeAgendamento,
+            addSaida,
+            updateSaida,
+            removeSaida,
           }
         : null,
     [
@@ -531,6 +562,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addServico, updateServico, removeServico,
       marcarNovidadesVistas, garantirSalvo, updateConfig, aplicarSinalATodas,
       aprovarColagem, agendarOrcamentoAtivo, updateAgendamento, removeAgendamento,
+      addSaida, updateSaida, removeSaida,
     ]
   );
 

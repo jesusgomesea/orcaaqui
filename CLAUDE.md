@@ -65,7 +65,8 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
       codigoRef? /* ORC-0012 | EJ-XXXXX */, refEj? /* linha [ref EJ-…] */,
       parceria?: { contrapartidas: [{ id, tipo /* divulgacao | permuta | indicacao | outra */, descricao, quantidade, prazo, valorEstimado, registros: [{ id, data, detalhe }] }] }, sinalPercentual?, origem? /* manual | gerador | colado-ej | colado-orc */,
     }],
-    servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo? }],
+    servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo?, tipo? /* produto; ausente = serviço */ }],
+    saidas: [{ id, data, descricao, categoria, valor, forma?, orcamentoId?, observacoes? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
     config: { sinalPercentual /* 40 */, validadeDias, deslocamentos: [{ id, nome, valor }],
               etapasAgenda: [{ id, nome, descricao? }], urlTabelaEj?, versaoCatalogo, codigo },
@@ -110,8 +111,9 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs (inclusive "a receber" e serviços dos próximos 30 dias, de `resumoAgenda`), próximos serviços, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — "Montar orçamento" (gerador, ver abaixo) e CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/agenda`** ([page.tsx](app/(app)/agenda/page.tsx)) — agendamentos em abas Agenda/Entregues/Cancelados, busca, números (aguardando, próximos 30 dias, a receber), **Colar orçamento** e detalhe (etapas, data/local, valor combinado, extras, pagamentos, notas). Ver "Agenda e colar orçamento"
+- **`/financeiro`** ([page.tsx](app/(app)/financeiro/page.tsx)) — mês a mês: recebido, saídas e saldo; abas Saídas (CRUD), Entradas (pagamentos do mês) e Por categoria. Ver "Financeiro"
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
-- **`/servicos`** — catálogo de serviços com preço padrão, reaproveitado no formulário de orçamento
+- **`/servicos`** — "Serviços e produtos": catálogo com preço padrão, filtrado por tipo, reaproveitado no gerador e no formulário de orçamento
 - **`/empresa`** — conta (trocar senha), gestão de empresas (criar/trocar/remover), dados da empresa ativa, logo, cor, moeda, dados bancários/Pix, backup JSON
 - **`/novidades`** — changelog mantido manualmente em [lib/changelog.ts](lib/changelog.ts). **Não é automático**: a cada entrega relevante, adicionar uma entrada nova no topo do array `NOVIDADES` com `id` crescente (prefixo de data, ex: `2026-09-09-01`) — o Sidebar mostra um badge com a contagem de entradas mais novas que `state.novidadesVistoId`, zerado ao visitar a página.
 - **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
@@ -126,7 +128,7 @@ Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em to
 - **Marca**: [components/marca/Marca.tsx](components/marca/Marca.tsx) (símbolo SVG inline, segue a cor de destaque) e [public/favicon.svg](public/favicon.svg) (cor da marca fixa).
 
 ## Layout no celular
-- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), coluna lateral com o botão "Montar orçamento"; no celular, topo leve (marca, empresa, tema) e **barra de abas flutuante em pílula**: Painel, Orçamentos, **+** (montar orçamento), Agenda e "Mais" (Clientes, Serviços, Empresa, Novidades, Sair). O "+" leva a `/orcamentos?montar=1`; já na página de orçamentos ele não navega e dispara o evento `EVENTO_MONTAR`, que a página escuta. O `<main>` tem `pb-32` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
+- **Navegação** ([Sidebar](components/layout/Sidebar.tsx)): no desktop (md+), coluna lateral com o botão "Montar orçamento"; no celular, topo leve (marca, empresa, tema) e **barra de abas flutuante em pílula**: Painel, Orçamentos, **+** (montar orçamento), Agenda e "Mais" (Financeiro, Clientes, Serviços e produtos, Empresa, Novidades, Sair — `ITEMS.slice(3)` no Sidebar). O "+" leva a `/orcamentos?montar=1`; já na página de orçamentos ele não navega e dispara o evento `EVENTO_MONTAR`, que a página escuta. O `<main>` tem `pb-32` no celular para a barra não cobrir o fim da página, e os toasts sobem com `mobileOffset`.
 - **Listas**: tabela só onde cabe — orçamentos em cartões até `xl` (a linha tem 8 ações); clientes, serviços e as tabelas do painel em cartões abaixo de `md`. As ações de um orçamento são uma função só (`acoes`) usada no cartão e na tabela.
 - **Diálogos** ([dialog.tsx](components/ui/dialog.tsx)): no celular ocupam a largura menos 0,75rem de cada lado, altura em `dvh` (desconta a barra do navegador) e `p-4`.
 
@@ -188,6 +190,15 @@ Uma parceria é um **orçamento com `parceria`** ([lib/parceria.ts](lib/parceria
 - **Acompanhamento** na Agenda ([AcompanharParceria](components/parceria/AcompanharParceria.tsx)): cada vez que o parceiro cumpre um pedaço (um post, uma indicação) vira um `registro` (data + link/nome); cumprida quando os registros chegam à `quantidade` (`progresso`). Pendente com prazo vencido aparece como atrasada.
 - `normalizarParceria` (via `mergeEmpresa`) limpa o que vier de backup; parceria inválida vira orçamento comum.
 - O contrato .docx é de prestação de serviço: parceria sem valor em dinheiro gera contrato com R$ 0,00 (as contrapartidas não entram nele). Contrato próprio de parceria continua fora do sistema.
+
+## Financeiro
+Entradas e saídas da empresa ([lib/financeiro.ts](lib/financeiro.ts), testado):
+
+- **Entradas não têm registro próprio**: são os pagamentos de `Orcamento.pagamentos` — os mesmos da Agenda e dos recibos. Não criar outra lista.
+- **Saídas** moram em `Empresa.saidas` (`normalizarSaidas` em `estado.ts` descarta data inválida e valor negativo), na moeda da empresa, com categoria livre (sugestões em `CATEGORIAS_SAIDA` + as já usadas) e **`orcamentoId` opcional**: ligada a um trabalho, entra em "Custos e resultado" do detalhe da Agenda ([ResultadoTrabalho](components/financeiro/ResultadoTrabalho.tsx): recebido − saídas ligadas). Excluir o orçamento mantém a saída e só tira o vínculo.
+- **Totais só na moeda da empresa** (como o "a receber" da Agenda); pagamento em outra moeda fica fora e a tela diz quantos. Contas em centavos.
+- Formulário único em [FormSaida](components/financeiro/FormSaida.tsx) (tela Financeiro e Agenda). Painel: "Financeiro do mês" (recebido, saídas, saldo), gráfico entradas x saídas (6 meses, `serieMensal`) e saídas por categoria do mês.
+- **Produto no catálogo**: `Servico.tipo = "produto"` (ausente = serviço; tipo desconhecido vindo de backup vira serviço). Mesmo cadastro por categoria, **sem estoque** — o tipo prepara um controle de estoque futuro. No contrato, o "Serviço" vem das categorias dos serviços; produto só entra se o orçamento não tiver serviço (o produto aparece no pacote).
 
 ## Netlify Blobs: armadilhas (já derrubaram o painel do EJ)
 Todo acesso ao Blobs passa por `storeBlobs()` em [lib/server/blobs.ts](lib/server/blobs.ts) — **nunca chamar `getStore` direto**. Ele entrega ao Blobs um `fetch` próprio que resolve três problemas:

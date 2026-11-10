@@ -17,6 +17,7 @@ import {
   type EstadoApp,
   type EstadoImportado,
   type FaixaDeslocamento,
+  type Saida,
   type Servico,
 } from "./tipos";
 
@@ -86,6 +87,7 @@ export function defaultEmpresa(id: string = uuid()): Empresa {
     servicos: [],
     config: configPadrao(id),
     agendamentos: [],
+    saidas: [],
     proximoNumero: 1,
   };
 }
@@ -158,8 +160,14 @@ export function subirVersaoCatalogo(config: ConfigEmpresa): ConfigEmpresa {
 }
 
 /** Todo serviço ganha um `codigo` único na empresa; os que já tinham ficam com o seu. */
-function normalizarServicos(servicos: Servico[]): Servico[] {
+function normalizarServicos(brutos: Servico[]): Servico[] {
   const usados = new Set<string>();
+  // Tipo desconhecido (backup estranho) vira serviço, que é o ausente.
+  const servicos = brutos.map((s) => {
+    if (s.tipo === undefined || s.tipo === "produto") return s;
+    const { tipo: _tipo, ...resto } = s;
+    return resto;
+  });
   const ok = servicos.map((s) => {
     const c = textoOu(s.codigo);
     if (CODIGO_VALIDO.test(c) && !usados.has(c)) {
@@ -173,6 +181,34 @@ function normalizarServicos(servicos: Servico[]): Servico[] {
     const codigo = codigoServicoLivre(s.id, usados);
     usados.add(codigo);
     return { ...s, codigo };
+  });
+}
+
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Saídas de backup ou servidor: descarta o que não tem data válida; valor nunca negativo. */
+export function normalizarSaidas(brutos: unknown): Saida[] {
+  if (!Array.isArray(brutos)) return [];
+  const ids = new Set<string>();
+  return brutos.filter(ehObjeto).flatMap((b) => {
+    const id = textoOu(b.id).trim() || uuid();
+    const data = textoOu(b.data).trim();
+    if (!DATA_ISO.test(data) || ids.has(id)) return [];
+    ids.add(id);
+    const s: Saida = {
+      id,
+      data,
+      descricao: textoOu(b.descricao),
+      categoria: textoOu(b.categoria),
+      valor: Math.max(0, numeroOu(b.valor, 0)),
+    };
+    const forma = textoOu(b.forma).trim();
+    const orcamentoId = textoOu(b.orcamentoId).trim();
+    const observacoes = textoOu(b.observacoes);
+    if (forma) s.forma = forma;
+    if (orcamentoId) s.orcamentoId = orcamentoId;
+    if (observacoes) s.observacoes = observacoes;
+    return [s];
   });
 }
 
@@ -242,6 +278,7 @@ export function mergeEmpresa(parcial: Partial<Empresa>): Empresa {
     servicos: normalizarServicos(Array.isArray(base.servicos) ? base.servicos : []),
     config: normalizarConfig(parcial.config, id),
     agendamentos: normalizarAgendamentos(parcial.agendamentos),
+    saidas: normalizarSaidas(parcial.saidas),
   });
 }
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, FileText, Users, Settings, Wrench, Bell, LogOut, CloudOff, RefreshCw, CalendarDays, Menu, Plus,
+  LayoutDashboard, FileText, Users, Settings, Wrench, Bell, LogOut, CloudOff, RefreshCw, CalendarDays, Menu, Plus, Wallet,
 } from "lucide-react";
 import { logout } from "@netlify/identity";
 import { toast } from "sonner";
@@ -20,8 +20,10 @@ const ITEMS = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard },
   { href: "/orcamentos", label: "Orçamentos", icon: FileText },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
+  // Daqui para baixo, no celular, os itens ficam no "Mais".
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/servicos", label: "Serviços", icon: Wrench },
+  { href: "/servicos", label: "Serviços e produtos", icon: Wrench },
   { href: "/empresa", label: "Empresa", icon: Settings },
 ];
 
@@ -88,7 +90,7 @@ function Sidebar() {
     e.preventDefault();
     window.dispatchEvent(new Event(EVENTO_MONTAR));
   };
-  const maisAtivo = ["/clientes", "/servicos", "/empresa", "/novidades"].includes(pathname);
+  const maisAtivo = ["/novidades", ...ITEMS.slice(3).map((i) => i.href)].includes(pathname);
 
   const iconeSync = comProblema ? (
     <CloudOff className="h-4 w-4" strokeWidth={2} />

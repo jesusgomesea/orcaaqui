@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-10-04",
+    data: "2026-11-10",
+    tipo: "novidade",
+    titulo: "Financeiro: saídas, saldo do mês e produtos no catálogo",
+    descricao:
+      "Nova tela Financeiro: registre as saídas (um tripé novo, o Uber de um ensaio, a assinatura do Lightroom) com categoria e, se quiser, ligadas a um orçamento. Veja mês a mês o que entrou (os pagamentos registrados), o que saiu e o saldo, além das saídas por categoria. O Painel ganhou o saldo do mês, o gráfico de entradas x saídas e as saídas por categoria, e o detalhe de cada agendamento mostra os custos e o resultado daquele trabalho. O catálogo agora tem Serviços e Produtos (álbum, pendrive, quadro), cada um com suas categorias.",
+  },
+  {
     id: "2026-11-10-03",
     data: "2026-11-10",
     tipo: "correcao",

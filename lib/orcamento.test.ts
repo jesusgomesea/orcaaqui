@@ -22,6 +22,7 @@ const empresa = {
   servicos: [],
   config: configPadrao("e1"),
   agendamentos: [],
+  saidas: [],
   proximoNumero: 2,
 } satisfies Empresa;
 

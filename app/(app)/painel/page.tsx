@@ -1,8 +1,12 @@
 "use client";
 
-import { FileText, TrendingUp, Clock, CheckCircle2, Wallet, CalendarClock, type LucideIcon } from "lucide-react";
+import {
+  FileText, TrendingUp, Clock, CheckCircle2, Wallet, CalendarClock, ArrowDownCircle, ArrowUpCircle, Scale, type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { nomeEtapa, resumoAgenda, valorRestante } from "@/lib/agenda";
+import { resumoMes, saidasPorCategoria, serieMensal } from "@/lib/financeiro";
+import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/card";
@@ -37,7 +41,7 @@ function faturamentoPorMes(orcamentos: Orcamento[], meses = 6) {
   return buckets;
 }
 
-function Kpi({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
+function Kpi({ icon: Icon, label, value, tom }: { icon: LucideIcon; label: string; value: string | number; tom?: "verde" | "vermelho" }) {
   return (
     <Card className="flex items-center gap-3.5 p-3.5 sm:p-5">
       <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary-texto sm:flex">
@@ -45,7 +49,9 @@ function Kpi({ icon: Icon, label, value }: { icon: LucideIcon; label: string; va
       </div>
       <div className="min-w-0">
         <div className="text-[11.5px] leading-tight font-medium text-text-muted sm:text-[12px]">{label}</div>
-        <div className="truncate text-[16px] font-bold text-text sm:text-[19px]">{value}</div>
+        <div className={cn("truncate text-[16px] font-bold sm:text-[19px]", tom === "vermelho" ? "text-danger" : tom === "verde" ? "text-success" : "text-text")}>
+          {value}
+        </div>
       </div>
     </Card>
   );
@@ -79,6 +85,13 @@ export default function PainelPage() {
   const dadosGrafico = faturamentoPorMes(empresaAtiva.orcamentos);
   const temDadosGrafico = dadosGrafico.some((b) => b.orcado > 0);
 
+  const financeiro = resumoMes(empresaAtiva, mesAtual);
+  const serieFinanceira = serieMensal(empresaAtiva, hoje);
+  const temSerieFinanceira = serieFinanceira.some((p) => p.entradas > 0 || p.saidas > 0);
+  const categoriasMes = saidasPorCategoria(empresaAtiva.saidas, mesAtual);
+  const maiorCategoria = categoriasMes[0]?.valor || 0;
+  const estiloTooltip = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12.5, color: "var(--text)" };
+
   return (
     <div>
       <h1 className="mb-5 text-[21px] font-bold text-text">Painel</h1>
@@ -90,6 +103,64 @@ export default function PainelPage() {
         <Kpi icon={Clock} label="Total de orçamentos" value={empresaAtiva.orcamentos.length} />
         <Kpi icon={Wallet} label="A receber (agenda)" value={formatMoney(agenda.aReceber, moeda)} />
         <Kpi icon={CalendarClock} label="Serviços nos próximos 30 dias" value={agenda.proximos30} />
+      </div>
+
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-[15px] font-bold text-text">Financeiro do mês</h2>
+        <Link href="/financeiro" className="text-[12.5px] font-semibold text-primary-texto hover:underline">Abrir financeiro</Link>
+      </div>
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3.5 lg:grid-cols-3">
+        <Kpi icon={ArrowDownCircle} label="Recebido no mês" value={formatMoney(financeiro.recebido, moeda)} />
+        <Kpi icon={ArrowUpCircle} label="Saídas no mês" value={formatMoney(financeiro.saidas, moeda)} />
+        <Kpi
+          icon={Scale}
+          label="Saldo do mês"
+          value={formatMoney(financeiro.saldo, moeda)}
+          tom={financeiro.saldo < 0 ? "vermelho" : financeiro.saldo > 0 ? "verde" : undefined}
+        />
+      </div>
+
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[3fr_2fr]">
+        <Card>
+          <h2 className="mb-3 text-[15px] font-bold text-text">Entradas x saídas (últimos 6 meses)</h2>
+          {!temSerieFinanceira ? (
+            <EmptyState message="Registre pagamentos e saídas para ver o gráfico." />
+          ) : (
+            <div className="h-52 w-full sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={serieFinanceira} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => formatMoney(v, moeda)} />
+                  <Tooltip formatter={(v) => formatMoney(v as number, moeda)} contentStyle={estiloTooltip} />
+                  <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                  <Bar dataKey="entradas" name="Entradas" fill="var(--success)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="saidas" name="Saídas" fill="var(--danger)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+        <Card>
+          <h2 className="mb-3 text-[15px] font-bold text-text">Saídas por categoria (mês)</h2>
+          {categoriasMes.length === 0 ? (
+            <EmptyState message="Nenhuma saída registrada neste mês." />
+          ) : (
+            <ul className="space-y-3">
+              {categoriasMes.slice(0, 6).map((c) => (
+                <li key={c.categoria}>
+                  <div className="mb-1 flex items-center justify-between gap-2 text-[13px]">
+                    <span className="truncate font-semibold text-text">{c.categoria}</span>
+                    <span className="shrink-0 text-text-muted">{formatMoney(c.valor, moeda)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${maiorCategoria ? (c.valor / maiorCategoria) * 100 : 0}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
 
       <Card className="mb-5">

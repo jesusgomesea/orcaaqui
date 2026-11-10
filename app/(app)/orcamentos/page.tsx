@@ -201,7 +201,7 @@ function OrcamentoForm({
                     >
                       <SelectTrigger className="truncate"><SelectValue placeholder="Serviço..." /></SelectTrigger>
                       <SelectContent>
-                        {servicos.map((s) => <SelectItem key={s.id} value={s.id}>{s.categoria ? `${s.categoria} — ${s.nome}` : s.nome} ({formatMoney(s.valor, f.moeda)})</SelectItem>)}
+                        {servicos.map((s) => <SelectItem key={s.id} value={s.id}>{s.categoria ? `${s.categoria} — ${s.nome}` : s.nome}{s.tipo === "produto" ? " · produto" : ""} ({formatMoney(s.valor, f.moeda)})</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
