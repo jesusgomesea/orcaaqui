@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-10-01",
+    data: "2026-11-10",
+    tipo: "correcao",
+    titulo: "Contrato com menos exigências",
+    descricao:
+      "Para gerar o contrato, agora bastam o serviço e o CPF e o e-mail do cliente. O que não estiver preenchido (pacote, data, local, prazo, tempo em campo, fotos) sai como \"a combinar\", e contratos com valor zero são aceitos. Orçamentos montados pelo catálogo passam a levar para o contrato o serviço, o pacote, o tempo em campo, as fotos e o prazo de entrega dos itens escolhidos — inclusive os que já estavam salvos.",
+  },
+  {
     id: "2026-11-09-04",
     data: "2026-11-09",
     tipo: "novidade",

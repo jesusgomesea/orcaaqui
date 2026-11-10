@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { configPadrao } from "./estado";
 import {
+  aplicarServicoDosItens,
   calcularGerador,
   codificarRefOrc,
   decodificarRefOrc,
@@ -11,8 +12,10 @@ import {
   recalcularRefOrc,
   refDaSelecao,
   selecaoDoOrcamento,
+  servicoContratoDosItens,
   type SelecaoGerador,
 } from "./gerador";
+import { servicoContratoVazio } from "./orcamento";
 import { calcOrcamentoTotais } from "./helpers";
 import type { Orcamento, Servico } from "./tipos";
 
@@ -215,5 +218,40 @@ describe("orçamento salvo", async () => {
     expect(r.total).toBe(c.total);
     expect(r.sinal).toBe(c.sinal);
     expect(r.linhas.find((l) => l.servicoId === "s-foto")?.volume).toBe(true);
+  });
+});
+
+describe("dados do serviço para o contrato a partir dos itens", () => {
+  const itens = [
+    { servicoId: "s-ensaio", quantidade: 1, descricao: "Ensaio externo" },
+    { servicoId: "s-hora", quantidade: 3, descricao: "Hora de cobertura" },
+    { servicoId: "s-foto", quantidade: 40, descricao: "Foto extra" },
+    { quantidade: 1, descricao: "Item livre" },
+  ];
+
+  test("serviço, pacote, tempo, fotos e prazo saem do catálogo", () => {
+    expect(servicoContratoDosItens(itens, servicos)).toEqual({
+      servico: "Foto",
+      pacote: "Ensaio externo + Hora de cobertura + Foto extra",
+      tempoCampo: "3h",
+      fotosEditadas: "40",
+      prazoEntrega: "Em até 7 dias · Em até 15 dias",
+    });
+  });
+
+  test("quantidade aparece no pacote só para unidade; sem catálogo não deriva nada", () => {
+    expect(servicoContratoDosItens([{ servicoId: "s-ensaio", quantidade: 2, descricao: "" }], servicos).pacote).toBe("2× Ensaio externo");
+    expect(servicoContratoDosItens([{ quantidade: 1, descricao: "Livre" }], servicos)).toEqual({});
+  });
+
+  test("atualiza o que veio dos itens e preserva o que foi digitado à mão", () => {
+    const anterior = servicoContratoDosItens([itens[0]], servicos);
+    const novo = servicoContratoDosItens(itens, servicos);
+    const atual = { ...servicoContratoVazio(), ...anterior, prazoEntrega: "Em até 3 dias", local: "Praça" };
+    const r = aplicarServicoDosItens(atual, anterior, novo);
+    expect(r.pacote).toBe(novo.pacote);
+    expect(r.tempoCampo).toBe("3h");
+    expect(r.prazoEntrega).toBe("Em até 3 dias");
+    expect(r.local).toBe("Praça");
   });
 });

@@ -22,6 +22,8 @@ import {
   selecaoDoOrcamento,
   selecaoVazia,
   type SelecaoGerador,
+  aplicarServicoDosItens,
+  servicoContratoDosItens,
 } from "@/lib/gerador";
 import type { Orcamento, Parceria } from "@/lib/tipos";
 import { EditorParceria } from "@/components/parceria/EditorParceria";
@@ -112,7 +114,17 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
       descontoTipo: "valor",
       acrescimo: calc.acrescimo,
       observacoes,
-      servicoContrato: { ...sc, dataServico: data, horarioInicio: horario, local },
+      // Serviço, pacote, tempo, fotos e prazo saem dos itens do catálogo (para o contrato).
+      servicoContrato: {
+        ...aplicarServicoDosItens(
+          sc,
+          servicoContratoDosItens(existente?.itens ?? [], empresaAtiva.servicos),
+          servicoContratoDosItens(itensDoCalculo(calc, () => ""), empresaAtiva.servicos)
+        ),
+        dataServico: data,
+        horarioInicio: horario,
+        local,
+      },
       origem: "gerador",
       codigoRef: codigo,
       sinalPercentual: pct,

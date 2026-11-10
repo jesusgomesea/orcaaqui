@@ -185,9 +185,50 @@ test("contrato — falta de dados lista o que falta", () => {
     numero: "001/2026",
     dataGeracao: "2026-11-09",
   });
-  for (const esperado of ["Orçamento com status Aprovado", "CPF do cliente", "Endereço do cliente", "Data do serviço", "Local do serviço"]) {
-    assert.ok(faltando.some((f) => f.startsWith(esperado)), `deveria faltar: ${esperado} — veio ${faltando.join(" | ")}`);
-  }
+  // Do cliente e do serviço, só serviço, CPF e e-mail são obrigatórios.
+  assert.deepEqual(faltando, ["Orçamento com status Aprovado", "CPF do cliente", "Serviço (Dados do serviço no orçamento)"]);
+});
+
+test("contrato — exige e-mail do cliente válido", () => {
+  const sem = montarCamposContrato({
+    prestador, cliente: { ...cliente, email: "" }, orcamento: orcamentoBase(), numero: "001/2026", dataGeracao: "2026-11-09",
+  });
+  assert.deepEqual(sem.faltando, ["E-mail do cliente"]);
+  const invalido = montarCamposContrato({
+    prestador, cliente: { ...cliente, email: "ana@" }, orcamento: orcamentoBase(), numero: "001/2026", dataGeracao: "2026-11-09",
+  });
+  assert.deepEqual(invalido.faltando, ["E-mail do cliente válido"]);
+});
+
+test("contrato — só com serviço, CPF e e-mail: o resto sai 'a combinar' e valor zero é aceito", () => {
+  const o = orcamentoBase({
+    itens: [{ id: "i1", descricao: "Parceria", quantidade: 1, valorUnitario: 0 }],
+    pagamentos: [],
+  });
+  o.servicoContrato = {
+    ...o.servicoContrato!,
+    pacote: "", dataServico: "", horarioInicio: "", horarioFim: "", local: "", tempoCampo: "", fotosEditadas: "", prazoEntrega: "",
+  };
+  const { campos, faltando } = montarCamposContrato({
+    prestador,
+    cliente: { ...cliente, endereco: "", telefone: "" },
+    orcamento: o,
+    numero: "001/2026",
+    dataGeracao: "2026-11-09",
+  });
+  assert.deepEqual(faltando, []);
+  assert.equal(campos.pacote, "a combinar");
+  assert.equal(campos.data_servico, "data a combinar");
+  assert.equal(campos.local, "a combinar");
+  assert.equal(campos.prazo_entrega, "a combinar");
+  assert.equal(campos.tempo_campo, "a combinar");
+  assert.equal(campos.fotos_editadas, "a combinar");
+  assert.equal(campos.horario_inicio, "—");
+  assert.equal(campos.cliente_endereco, "não informado");
+  assert.equal(campos.cliente_whatsapp, "não informado");
+  assert.equal(campos.valor_total, reais("R$ 0,00"));
+  assert.equal(campos.valor_sinal, reais("R$ 0,00"));
+  assert.equal(campos.valor_restante, reais("R$ 0,00"));
 });
 
 test("recibo — total pago acumulado até o pagamento", () => {

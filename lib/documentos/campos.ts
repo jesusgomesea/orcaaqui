@@ -47,6 +47,14 @@ export const SINAL_DO_MODELO = 40;
 
 const texto = (v: unknown) => String(v ?? "").trim();
 
+/**
+ * Texto para campo opcional deixado em branco. O contrato só exige serviço,
+ * CPF e e-mail do cliente (além dos dados do prestador); o resto sai assim.
+ */
+export const A_COMBINAR = "a combinar";
+export const NAO_INFORMADO = "não informado";
+const ouACombinar = (v: string) => v || A_COMBINAR;
+
 /** Uma linha só: descrições de item podem ter quebras. */
 const umaLinha = (v: unknown) => texto(v).replace(/\s*\n\s*/g, " ");
 
@@ -99,19 +107,17 @@ function camposCliente(c: Cliente | undefined, faltando: string[], completo: boo
   const campos: Campos = { cliente_nome: nome, cliente_cpf: formatarCpf(cpf) };
   if (!completo) return campos;
 
+  // Do cliente, o contrato exige só CPF e e-mail; endereço e WhatsApp são opcionais.
   const endereco = texto(c.endereco);
   const whatsapp = texto(c.telefone);
   const email = texto(c.email);
-  exigir(faltando, endereco, "Endereço do cliente");
-  if (!whatsapp) faltando.push("WhatsApp do cliente");
-  else if (!telefoneValido(whatsapp)) faltando.push("WhatsApp do cliente no formato (00) 00000-0000");
   if (!email) faltando.push("E-mail do cliente");
   else if (!emailValido(email)) faltando.push("E-mail do cliente válido");
 
   return {
     ...campos,
-    cliente_endereco: endereco,
-    cliente_whatsapp: formatarTelefone(whatsapp),
+    cliente_endereco: endereco || NAO_INFORMADO,
+    cliente_whatsapp: !whatsapp ? NAO_INFORMADO : telefoneValido(whatsapp) ? formatarTelefone(whatsapp) : whatsapp,
     cliente_email: email,
   };
 }
@@ -130,10 +136,9 @@ function camposServicoBasico(o: Orcamento, faltando: string[]): Campos {
   const servico = texto(s?.servico);
   const pacote = texto(s?.pacote);
   const data = formatarData(texto(s?.dataServico));
+  // Só o serviço é obrigatório; pacote e data em branco saem "a combinar".
   exigir(faltando, servico, "Serviço (Dados do serviço no orçamento)");
-  exigir(faltando, pacote, "Pacote");
-  exigir(faltando, data, "Data do serviço");
-  return { servico, pacote, data_servico: data };
+  return { servico, pacote: ouACombinar(pacote), data_servico: data || `data ${A_COMBINAR}` };
 }
 
 export function listarAdicionais(o: Orcamento): string {
@@ -177,15 +182,12 @@ export function montarCamposContrato(e: EntradaContrato): Resultado {
   const basico = camposServicoBasico(o, faltando);
 
   const s = o.servicoContrato;
+  // Horário, local, prazo, tempo e fotos são opcionais: em branco saem "a combinar"
+  // (o horário, que o modelo escreve "das … às …", sai "—").
   const horarioInicio = texto(s?.horarioInicio);
   const horarioFim = texto(s?.horarioFim);
   const local = texto(s?.local);
   const prazo = texto(s?.prazoEntrega);
-  if (!horarioInicio) faltando.push("Horário de início");
-  else if (!/^\d{2}:\d{2}$/.test(horarioInicio)) faltando.push("Horário de início no formato HH:MM");
-  if (horarioFim && !/^\d{2}:\d{2}$/.test(horarioFim)) faltando.push("Horário de término no formato HH:MM");
-  exigir(faltando, local, "Local do serviço");
-  exigir(faltando, prazo, "Prazo de entrega");
 
   let tempoCampo: string;
   let fotos: string;
@@ -193,22 +195,22 @@ export function montarCamposContrato(e: EntradaContrato): Resultado {
   if (s?.personalizado) {
     const horas = Number(s.personalizadoHoras) || 0;
     const qtdFotos = Number(s.personalizadoFotos) || 0;
-    if (horas <= 0) faltando.push("Horas do pacote Personalizado");
-    if (qtdFotos <= 0) faltando.push("Quantidade de fotos do pacote Personalizado");
     const horasTxt = String(horas).replace(".", ",");
-    tempoCampo = horas > 0 ? `${horasTxt}h` : "";
-    fotos = qtdFotos > 0 ? String(qtdFotos) : "";
-    resumo = `${horas === 1 ? "1 hora" : `${horasTxt} horas`} · ${plural(qtdFotos, "foto", "fotos")}`;
+    tempoCampo = horas > 0 ? `${horasTxt}h` : A_COMBINAR;
+    fotos = qtdFotos > 0 ? String(qtdFotos) : A_COMBINAR;
+    resumo = [
+      horas > 0 ? (horas === 1 ? "1 hora" : `${horasTxt} horas`) : `horas ${A_COMBINAR}`,
+      qtdFotos > 0 ? plural(qtdFotos, "foto", "fotos") : `fotos ${A_COMBINAR}`,
+    ].join(" · ");
   } else {
-    tempoCampo = texto(s?.tempoCampo);
-    fotos = texto(s?.fotosEditadas);
-    exigir(faltando, tempoCampo, "Tempo em campo");
-    exigir(faltando, fotos, "Fotos editadas (faixa do pacote)");
+    tempoCampo = ouACombinar(texto(s?.tempoCampo));
+    fotos = ouACombinar(texto(s?.fotosEditadas));
     resumo = "—";
   }
 
+  // Valor zero é permitido (ex.: parceria só com contrapartidas); negativo não.
   const total = totalDoOrcamento(o);
-  if (paraCentavos(total) <= 0) faltando.push("Valor total do orçamento maior que zero");
+  if (paraCentavos(total) < 0) faltando.push("Valor total do orçamento não pode ser negativo");
   const { sinal, restante } = calcularSinal(total, SINAL_DO_MODELO);
 
   exigir(faltando, texto(e.numero), "Número do contrato");
@@ -218,14 +220,14 @@ export function montarCamposContrato(e: EntradaContrato): Resultado {
     ...prestador,
     ...cliente,
     ...basico,
-    horario_inicio: horarioInicio,
+    horario_inicio: horarioInicio || "—",
     horario_fim: horarioFim || "—",
-    local,
+    local: ouACombinar(local),
     tempo_campo: tempoCampo,
     fotos_editadas: fotos,
     personalizado_resumo: resumo,
     adicionais: listarAdicionais(o),
-    prazo_entrega: prazo,
+    prazo_entrega: ouACombinar(prazo),
     valor_total: formatarReais(total),
     valor_sinal: formatarReais(sinal),
     valor_restante: formatarReais(restante),

@@ -10,6 +10,8 @@ import { ErroMarcadores, preencherModelo } from "@/lib/documentos/preencher";
 import { formatarNumeroDocumento, hojeNoFuso, nomeArquivoDocumento } from "@/lib/documentos/formatos";
 import { uuid } from "@/lib/helpers";
 import { percentualSinal } from "@/lib/agenda";
+import { aplicarServicoDosItens, servicoContratoDosItens } from "@/lib/gerador";
+import { servicoContratoVazio } from "@/lib/orcamento";
 import type { DocumentoGerado, Empresa, Orcamento, TipoDocumento } from "@/lib/tipos";
 
 /**
@@ -46,8 +48,18 @@ async function carregar(uid: string, empresaId: string, orcamentoId: string) {
   if (!empresa.prestador?.habilitado) {
     throw new ErroGeracao("Contratos e recibos não estão habilitados nesta empresa.", 403);
   }
-  const orcamento: Orcamento | undefined = empresa.orcamentos.find((o) => o.id === orcamentoId);
-  if (!orcamento) throw new ErroGeracao("Orçamento não encontrado. Aguarde salvar e tente de novo.", 404);
+  const salvo: Orcamento | undefined = empresa.orcamentos.find((o) => o.id === orcamentoId);
+  if (!salvo) throw new ErroGeracao("Orçamento não encontrado. Aguarde salvar e tente de novo.", 404);
+  // Campos vazios do serviço (pacote, prazo, tempo, fotos) saem dos itens do
+  // catálogo — cobre orçamentos montados antes de o montador gravá-los.
+  const orcamento: Orcamento = {
+    ...salvo,
+    servicoContrato: aplicarServicoDosItens(
+      { ...servicoContratoVazio(), ...salvo.servicoContrato },
+      {},
+      servicoContratoDosItens(salvo.itens, empresa.servicos)
+    ),
+  };
   const cliente = empresa.clientes.find((c) => c.id === orcamento.clienteId);
   return { empresa, orcamento, cliente };
 }
