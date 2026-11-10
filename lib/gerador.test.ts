@@ -255,3 +255,24 @@ describe("dados do serviço para o contrato a partir dos itens", () => {
     expect(r.local).toBe("Praça");
   });
 });
+
+describe("produto no catálogo", () => {
+  const comProduto: Servico[] = [
+    ...servicos,
+    { id: "p-album", codigo: "ALB", categoria: "Álbuns", nome: "Álbum 20x30", descricao: "", valor: 400, tipo: "produto", prazo: "Em até 30 dias" },
+  ];
+
+  test("o 'Serviço' do contrato vem das categorias de serviço; o produto entra no pacote", () => {
+    const r = servicoContratoDosItens(
+      [{ servicoId: "s-ensaio", quantidade: 1, descricao: "" }, { servicoId: "p-album", quantidade: 1, descricao: "" }],
+      comProduto
+    );
+    expect(r.servico).toBe("Foto");
+    expect(r.pacote).toBe("Ensaio externo + Álbum 20x30");
+    expect(r.prazoEntrega).toBe("Em até 7 dias · Em até 30 dias");
+  });
+
+  test("orçamento só com produto usa a categoria do produto", () => {
+    expect(servicoContratoDosItens([{ servicoId: "p-album", quantidade: 2, descricao: "" }], comProduto).servico).toBe("Álbuns");
+  });
+});

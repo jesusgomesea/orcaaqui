@@ -93,6 +93,7 @@ describe("normalizar — estado antigo", () => {
     expect(e.config.codigo).toMatch(/^[2-9A-HJKMNP-Z]{5}$/);
     expect(e.config.urlTabelaEj).toBeUndefined();
     expect(e.agendamentos).toEqual([]);
+    expect(e.saidas).toEqual([]);
   });
 
   test("serviços ganham código único e estável", () => {
@@ -145,6 +146,7 @@ describe("normalizar — backup antigo (v1, empresa única)", () => {
     expect(e.servicos[0].codigo).toBeTruthy();
     expect(e.config.sinalPercentual).toBe(40);
     expect(e.agendamentos).toEqual([]);
+    expect(e.saidas).toEqual([]);
   });
 
   test("lixo não vira estado", () => {
@@ -263,4 +265,19 @@ describe("normalizar — parceria", () => {
     expect("parceria" in e.orcamentos[2]).toBe(false);
     expect(mergeEmpresa(structuredClone(e))).toEqual(e);
   });
+});
+
+test("tipo do catálogo: produto fica, tipo desconhecido vira serviço (ausente)", () => {
+  const e = normalizar({
+    empresaAtivaId: "e1",
+    empresas: [{
+      id: "e1",
+      servicos: [
+        { id: "a", categoria: "Álbuns", nome: "Álbum", descricao: "", valor: 1, tipo: "produto" },
+        { id: "b", categoria: "", nome: "Ensaio", descricao: "", valor: 1, tipo: "coisa" as never },
+      ],
+    }],
+  } as EstadoImportado)!.empresas[0];
+  expect(e.servicos[0].tipo).toBe("produto");
+  expect("tipo" in e.servicos[1]).toBe(false);
 });

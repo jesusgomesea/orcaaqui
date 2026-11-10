@@ -185,7 +185,10 @@ export function servicoContratoDosItens(
   const unicos = (lista: string[]) => [...new Set(lista.map((x) => x.trim()).filter(Boolean))];
   const soma = (u: string) => linhas.filter((l) => (l.s.unidade ?? "un") === u).reduce((t, l) => t + (Number(l.it.quantidade) || 0), 0);
 
-  const categorias = unicos(linhas.map((l) => l.s.categoria));
+  // "Serviço" do contrato vem das categorias dos serviços; produtos (álbum,
+  // pendrive) só entram se o orçamento não tiver nenhum serviço.
+  const deServicos = linhas.filter((l) => l.s.tipo !== "produto");
+  const categorias = unicos((deServicos.length ? deServicos : linhas).map((l) => l.s.categoria));
   const nomes = linhas.map((l) => {
     const q = Number(l.it.quantidade) || 0;
     const nome = l.s.nome.trim() || l.it.descricao.trim();

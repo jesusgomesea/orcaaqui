@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Check, MessageCircle, Plus, Trash2, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { AcompanharParceria } from "@/components/parceria/AcompanharParceria";
+import { ResultadoTrabalho } from "@/components/financeiro/ResultadoTrabalho";
 import { Button } from "@/components/ui/button";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Input, Textarea, Label } from "@/components/ui/input";
@@ -257,6 +258,8 @@ export function DetalheAgendamento({ agendamentoId, onFechar }: { agendamentoId:
           </div>
         </section>
       )}
+
+      {o && <ResultadoTrabalho orcamento={o} />}
 
       <section className="mb-4">
         <Label>Notas (só você vê)</Label>

@@ -141,6 +141,13 @@ export interface Parceria {
 
 export type UnidadeServico = "un" | "hora" | "foto" | "dia" | "km";
 
+/**
+ * Serviço (o que você faz) ou produto (o que você entrega: álbum, pendrive,
+ * quadro). Sem estoque por enquanto — o tipo separa os dois no catálogo e já
+ * prepara um controle de estoque futuro. Ausente = serviço.
+ */
+export type TipoCatalogo = "servico" | "produto";
+
 export interface Servico {
   id: string;
   categoria: string;
@@ -161,6 +168,8 @@ export interface Servico {
   prazo?: string;
   /** false = some do gerador, mas continua lendo orçamentos antigos. Ausente = ativo. */
   ativo?: boolean;
+  /** Ausente = serviço. */
+  tipo?: TipoCatalogo;
 }
 
 /** Faixa de deslocamento cobrada à parte (id curto vai na `[ref]` como `ds=`). */
@@ -242,6 +251,25 @@ export interface Prestador {
   modeloVersao: string;
 }
 
+/**
+ * Saída de dinheiro da empresa (compra de equipamento, deslocamento,
+ * assinatura…), na moeda da empresa. `orcamentoId` liga a saída a um trabalho
+ * — é o que permite ver o resultado de cada um. As entradas não têm registro
+ * próprio: são os pagamentos de `Orcamento.pagamentos`.
+ */
+export interface Saida {
+  id: string;
+  /** YYYY-MM-DD */
+  data: string;
+  descricao: string;
+  categoria: string;
+  valor: number;
+  /** Pix, cartão, dinheiro… */
+  forma?: string;
+  orcamentoId?: string;
+  observacoes?: string;
+}
+
 export interface Empresa {
   id: string;
   nome: string;
@@ -261,6 +289,7 @@ export interface Empresa {
   prestador?: Prestador;
   config: ConfigEmpresa;
   agendamentos: Agendamento[];
+  saidas: Saida[];
   /** Contador monotônico de `Orcamento.numero`. Nunca reaproveita número de excluído. */
   proximoNumero: number;
 }

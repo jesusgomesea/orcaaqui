@@ -236,7 +236,10 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
                       return (
                         <li key={s.id} className={cn("flex items-center gap-2 rounded-2xl border p-2", q ? "border-primary bg-primary-tint" : "border-border")}>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-[13px] font-semibold text-text">{s.nome}</div>
+                            <div className="truncate text-[13px] font-semibold text-text">
+                              {s.nome}
+                              {s.tipo === "produto" && <span className="ml-1.5 text-[11px] font-medium text-text-muted">· produto</span>}
+                            </div>
                             <div className="text-[11.5px] text-text-muted">
                               {$(unitario)} / {nomeUnidade(s.unidade)}
                               {volume && " (preço por volume)"}
