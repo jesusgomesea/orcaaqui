@@ -34,10 +34,14 @@ export function diffDays(fromStr: string, toStr: string): number {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
+/**
+ * AAAA-MM-DD → DD/MM/AAAA. Só aceita esse formato: o resultado vai para o HTML
+ * do PDF, e uma data adulterada num backup (`<img onerror=…>`) não pode passar.
+ */
 export function formatDateBR(dateStr: string | undefined | null): string {
-  if (!dateStr) return "-";
-  const [y, m, d] = dateStr.split("-");
-  return `${d}/${m}/${y}`;
+  const m = typeof dateStr === "string" ? /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr) : null;
+  if (!m) return "-";
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
 export const MOEDAS: { codigo: CodigoMoeda; label: string }[] = [

@@ -16,7 +16,16 @@ import { useSessao } from "@/components/auth/ProvedorSessao";
 import { uuid, todayStr } from "./helpers";
 import { NOVIDADES } from "./changelog";
 import { comprimirLogo, LIMITE_LOGO_LEVE } from "./imagem";
-import { codigoServicoLivre, defaultState, mergeEmpresa, mudouPreco, normalizar, subirVersaoCatalogo } from "./estado";
+import {
+  codigoServicoLivre,
+  defaultState,
+  manterEmpresaAtiva,
+  mergeEmpresa,
+  mudouPreco,
+  normalizar,
+  removerOrcamento,
+  subirVersaoCatalogo,
+} from "./estado";
 import { agendarOrcamento, aprovarLeitura, type LeituraColada, type ResultadoAprovacao } from "./colar";
 import type {
   Agendamento,
@@ -134,6 +143,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Salvamentos em fila: dois PUTs ao mesmo tempo mandariam a mesma versão e o
   // segundo bateria no primeiro (falso conflito com o próprio aparelho).
   const fila = useRef<Promise<unknown>>(Promise.resolve());
+  // Empresa aberta neste aparelho, lida pela releitura do servidor (que não
+  // pode trocar a empresa no meio de uma edição).
+  const empresaAtivaLocal = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    empresaAtivaLocal.current = state?.empresaAtivaId;
+  }, [state?.empresaAtivaId]);
 
   const salvar = useCallback((estado: EstadoApp): Promise<boolean> => {
     const tarefa = fila.current.then(async () => {
@@ -299,9 +314,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!resposta.ok) return;
         const { estado, versao: lida } = (await resposta.json()) as { estado: EstadoImportado | null; versao?: string | null };
         if (!lida || lida === versao.current || pendente.current) return;
-        const novo = normalizar(estado);
-        if (!novo) return;
+        const lido = normalizar(estado);
+        if (!lido) return;
+        const novo = manterEmpresaAtiva(lido, empresaAtivaLocal.current);
         versao.current = lida;
+        // Conta como já salvo mesmo com a empresa ativa daqui: só trocar de
+        // empresa não precisa de gravação (e evitaria um vaivém entre aparelhos).
         ultimoSalvo.current = JSON.stringify(novo);
         setState(novo);
       } catch {
@@ -402,13 +420,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patchEmpresaAtiva]
   );
   const removeOrcamento = useCallback(
-    (id: string) =>
-      patchEmpresaAtiva((e) => ({
-        ...e,
-        orcamentos: e.orcamentos.filter((o) => o.id !== id),
-        // A saída continua (o dinheiro saiu); só perde o vínculo com o trabalho.
-        saidas: e.saidas.map((sd) => (sd.orcamentoId === id ? { ...sd, orcamentoId: undefined } : sd)),
-      })),
+    (id: string) => patchEmpresaAtiva((e) => removerOrcamento(e, id)),
     [patchEmpresaAtiva]
   );
 
@@ -469,24 +481,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Aprovação e agendamento são calculados sobre a empresa ativa de agora (funções puras de
   // lib/colar.ts) e gravados de uma vez — quem chama precisa dos ids criados na hora.
+  // O resultado volta pelo id da empresa calculada, nunca "na ativa": se a ativa mudou
+  // entre a renderização e o clique, a cópia de uma empresa não substitui a outra.
+  const gravarEmpresa = useCallback((empresa: Empresa) => {
+    setState((s) => (s ? { ...s, empresas: s.empresas.map((e) => (e.id === empresa.id ? empresa : e)) } : s));
+  }, []);
   const aprovarColagem = useCallback(
     (leitura: LeituraColada) => {
       if (!empresaAtiva) throw new Error("Dados ainda não carregados.");
       const r = aprovarLeitura(empresaAtiva, leitura);
-      patchEmpresaAtiva(() => r.empresa);
+      gravarEmpresa(r.empresa);
       return r;
     },
-    [empresaAtiva, patchEmpresaAtiva]
+    [empresaAtiva, gravarEmpresa]
   );
   const agendarOrcamentoAtivo = useCallback(
     (orcamentoId: string) => {
       if (!empresaAtiva) return null;
       const r = agendarOrcamento(empresaAtiva, orcamentoId);
       if (!r) return null;
-      patchEmpresaAtiva(() => r.empresa);
+      gravarEmpresa(r.empresa);
       return { agendamentoId: r.agendamentoId, jaExistia: r.jaExistia };
     },
-    [empresaAtiva, patchEmpresaAtiva]
+    [empresaAtiva, gravarEmpresa]
   );
   const updateAgendamento = useCallback(
     (id: string, alterar: (a: Agendamento) => Agendamento) =>

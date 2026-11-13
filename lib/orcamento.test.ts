@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { calcOrcamentoTotais } from "./helpers";
-import { gerarOrcamentoHtml, gerarTextoWhatsapp } from "./orcamento";
+import { calcOrcamentoTotais, formatDateBR } from "./helpers";
+import { camposDaCopia, gerarOrcamentoHtml, gerarTextoWhatsapp } from "./orcamento";
 import { configPadrao } from "./estado";
 import type { Cliente, Empresa, Orcamento } from "./tipos";
 
@@ -182,5 +182,58 @@ describe("clientes parecidos (cadastro repetido)", async () => {
   test("telefone curto demais não conta como igual", () => {
     const clientes: Cliente[] = [{ ...base, telefone: "123" }, { ...base, id: "c2", nome: "Outro", telefone: "123" }];
     expect(clientesParecidos(clientes, clientes[0])).toEqual([]);
+  });
+});
+
+describe("data no documento impresso", () => {
+  test("formatDateBR só aceita AAAA-MM-DD", () => {
+    expect(formatDateBR("2026-11-01")).toBe("01/11/2026");
+    expect(formatDateBR("")).toBe("-");
+    expect(formatDateBR(undefined)).toBe("-");
+    expect(formatDateBR('<img src=x onerror="alert(1)">')).toBe("-");
+  });
+
+  test("data adulterada num backup não vira HTML no PDF", () => {
+    const html = gerarOrcamentoHtml(orcamento({ data: "<img src=x onerror=alert(1)>" }), cliente, "Nº 0001", empresa);
+    expect(html).not.toContain("<img src=x");
+  });
+});
+
+describe("camposDaCopia (duplicar)", () => {
+  let n = 0;
+  const novoId = () => `novo-${++n}`;
+
+  test("não leva o que identifica o original", () => {
+    const original = orcamento({
+      status: "aprovado",
+      codigoRef: "EJ-ABCDE",
+      refEj: "[ref EJ-ABCDE v3]",
+      pagamentos: [{ id: "p1", tipo: "sinal", valor: 80, data: "2026-11-02", forma: "Pix" }],
+    });
+    const copia = camposDaCopia(original, novoId, "2026-11-12");
+    expect(copia).not.toHaveProperty("id");
+    expect(copia).not.toHaveProperty("numero");
+    expect(copia).not.toHaveProperty("criadoEm");
+    expect(copia).not.toHaveProperty("pagamentos");
+    expect(copia).not.toHaveProperty("codigoRef");
+    expect(copia).not.toHaveProperty("refEj");
+    expect(copia.status).toBe("rascunho");
+    expect(copia.data).toBe("2026-11-12");
+    expect(copia.itens?.map((i) => i.descricao)).toEqual(["Ensaio", "Foto extra"]);
+    expect(copia.itens?.some((i) => i.id === "i1" || i.id === "i2")).toBe(false);
+  });
+
+  test("parceria vem sem o que o parceiro já cumpriu", () => {
+    const original = orcamento({
+      parceria: {
+        contrapartidas: [
+          { id: "c1", tipo: "divulgacao", descricao: "Post", quantidade: 2, prazo: "", valorEstimado: 0, registros: [{ id: "r1", data: "2026-11-05", detalhe: "link" }] },
+        ],
+      },
+    });
+    const copia = camposDaCopia(original, novoId, "2026-11-12");
+    expect(copia.parceria?.contrapartidas[0].descricao).toBe("Post");
+    expect(copia.parceria?.contrapartidas[0].registros).toEqual([]);
+    expect(original.parceria?.contrapartidas[0].registros).toHaveLength(1);
   });
 });

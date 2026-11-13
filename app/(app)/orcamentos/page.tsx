@@ -26,7 +26,7 @@ import {
   servicoContratoDosItens,
 } from "@/lib/gerador";
 import { percentualSinal } from "@/lib/agenda";
-import { gerarOrcamentoHtml, gerarTextoWhatsapp, servicoContratoVazio } from "@/lib/orcamento";
+import { camposDaCopia, gerarOrcamentoHtml, gerarTextoWhatsapp, servicoContratoVazio } from "@/lib/orcamento";
 import {
   uuid, todayStr, addDaysStr, formatDateBR, formatMoney, MOEDAS,
   formatarNumeroOrcamento, calcOrcamentoTotais, STATUS_LABEL, STATUS_TONE, STATUS_EDITAVEIS, statusEfetivo,
@@ -373,14 +373,21 @@ export default function OrcamentosPage() {
   };
 
   const handleDuplicar = (o: Orcamento) => {
-    // Pagamentos são do orçamento original: a cópia começa sem nenhum.
-    const { id: _id, criadoEm: _criadoEm, numero: _numero, pagamentos: _pagamentos, ...campos } = o;
-    addOrcamento({ ...campos, data: todayStr(), status: "rascunho", itens: campos.itens.map((it) => ({ ...it, id: uuid() })) });
+    addOrcamento(camposDaCopia(o, uuid, todayStr()));
     toast.success("Orçamento duplicado.");
   };
 
   const handleExcluir = (o: Orcamento) => {
-    if (!confirm("Confirma a exclusão deste orçamento?")) return;
+    const agendado = empresaAtiva.agendamentos.some((a) => a.orcamentoId === o.id);
+    const pagos = o.pagamentos?.length ?? 0;
+    const perdas = [
+      agendado && "o agendamento na Agenda",
+      pagos > 0 && (pagos === 1 ? "1 pagamento registrado" : `${pagos} pagamentos registrados`),
+    ].filter(Boolean);
+    const aviso = perdas.length
+      ? `Confirma a exclusão deste orçamento? Também serão apagados ${perdas.join(" e ")}. Se o cliente desistiu, marcar como recusado mantém o histórico.`
+      : "Confirma a exclusão deste orçamento?";
+    if (!confirm(aviso)) return;
     removeOrcamento(o.id);
     toast.success("Orçamento excluído.");
   };

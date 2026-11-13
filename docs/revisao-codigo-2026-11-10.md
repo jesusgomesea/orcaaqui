@@ -6,30 +6,30 @@ Revisão em três frentes (servidor, regras e estado, telas). Os itens marcados 
 
 ## Alta prioridade (risco de perder ou corromper dados)
 
-1. **Voltar para o app troca a empresa ativa** — **conferido**
+1. **Voltar para o app troca a empresa ativa** — **conferido** — **corrigido (12/11)**
    - **Onde:** `lib/store.tsx:286-306`.
    - **Problema:** a releitura do servidor (`focus`/`visibilitychange`) traz o `empresaAtivaId` escolhido em outro aparelho ou aba.
    - **Efeitos:**
      - Uma edição aberta é salva na empresa errada (`updateOrcamento` não acha o id, e o toast diz "salvo" mesmo assim).
      - `aprovarColagem`/`agendarOrcamento` podem substituir a empresa B inteira por uma cópia da A.
    - **Correção:** preservar o `empresaAtivaId` local na releitura, ou tirá-lo do estado sincronizado. Aplicar o resultado de `aprovarColagem`/`agendarOrcamento` pelo id da empresa.
-2. **Excluir orçamento apaga os pagamentos e deixa o agendamento órfão** — **conferido** (`lib/store.tsx:400-403`).
+2. **Excluir orçamento apaga os pagamentos e deixa o agendamento órfão** — **conferido** — **corrigido (12/11)** (`lib/store.tsx:400-403`).
    - **Efeitos:** a Agenda segue mostrando o agendamento, com "a receber" errado e o sinal perdido.
    - **Correção:** avisar no confirm e remover o agendamento junto, ou bloquear a exclusão e sugerir "recusado".
-3. **Montador do EJ salva o preço do pacote anterior** — **conferido**
+3. **Montador do EJ salva o preço do pacote anterior** — **conferido** — **corrigido (12/11)**
    - **Onde:** `components/gerador/MontadorEj.tsx:129`.
    - **Problema:** `atual` só compara o código. Trocar de pacote e enviar em menos de 350 ms, ou depois de um erro da API, grava os itens e o total de A com a `[ref]` de B.
    - **Correção:** guardar a `linhaRef` junto do recálculo e exigir que seja igual. Limpar o recálculo a cada mudança e quando der erro.
-4. **Duplicar orçamento do EJ copia o `codigoRef`** (`orcamentos/page.tsx` `handleDuplicar`, `lib/colar.ts` `acharExistente`).
+4. **Duplicar orçamento do EJ copia o `codigoRef`** — **corrigido (12/11)** (`orcamentos/page.tsx` `handleDuplicar`, `lib/colar.ts` `acharExistente`).
    - **Problema:** ao colar a aprovação, o sistema sobrescreve o **original**, e a cópia também herda `refEj` e os registros de parceria.
    - **Correção:** retirar `codigoRef`, `refEj` e os registros de parceria ao duplicar.
-5. **XSS no PDF pela data** — **conferido** (`lib/orcamento.ts:95-96`).
+5. **XSS no PDF pela data** — **conferido** — **corrigido (12/11)** (`lib/orcamento.ts:95-96`).
    - **Problema:** `formatDateBR(o.data)` vai sem escape para o `innerHTML`, e um backup importado pode trazer script na data.
    - **Correção:** `escapeHtml(...)` e validar `AAAA-MM-DD` no `mergeEmpresa`.
 
 ## Média prioridade
 
-6. **"Sair" descarta o que está no debounce** — **conferido** (`components/layout/Sidebar.tsx:60`).
+6. **"Sair" descarta o que está no debounce** — **conferido** — **corrigido (12/11)** (`components/layout/Sidebar.tsx:60`).
    - **Correção:** chamar `garantirSalvo()` antes do `logout()`.
 7. **Gravação fora da fila**
    - **Problema:** o `keepalive` só funciona até 64 KB, o que vale para o estado inteiro, e não há gravação ao esconder a aba.

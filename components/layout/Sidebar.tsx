@@ -50,7 +50,7 @@ const CLASSE_ITEM =
  *   (Clientes, Serviços, Empresa, Novidades, Sair).
  */
 function Sidebar() {
-  const { state, empresaAtiva, switchEmpresa, statusSincronizacao } = useStore();
+  const { state, empresaAtiva, switchEmpresa, statusSincronizacao, garantirSalvo } = useStore();
   const { usuario } = useSessao();
   const pathname = usePathname();
   const naoVistas = contarNaoVistas(state.novidadesVistoId);
@@ -60,6 +60,10 @@ function Sidebar() {
   const comProblema = statusSincronizacao === "erro" || statusSincronizacao === "conflito";
 
   const handleSair = async () => {
+    // A última alteração pode estar esperando o debounce: grava antes de
+    // encerrar a sessão, senão ela some sem aviso.
+    const salvo = await garantirSalvo();
+    if (!salvo && !confirm("A última alteração ainda não foi salva na sua conta. Sair mesmo assim?")) return;
     try {
       await logout();
     } catch (e) {
