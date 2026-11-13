@@ -57,7 +57,9 @@ export function MontadorEj({
   // Reaproveita o código EJ de um orçamento que já veio daqui; senão, gera um.
   const [codigo] = useState(() => (existente?.codigoRef?.startsWith("EJ-") ? existente.codigoRef : novoCodigoEj()));
   const [emitidoEm] = useState(() => existente?.data || todayStr());
-  const [recalculo, setRecalculo] = useState<RecalculoEj | null>(null);
+  // Guarda a linha [ref] que gerou o cálculo: só vale enquanto a escolha na tela
+  // for exatamente a mesma (senão salvaria o preço do pacote anterior).
+  const [recalculo, setRecalculo] = useState<{ linha: string; r: RecalculoEj } | null>(null);
   const [calculando, setCalculando] = useState(false);
   const [erroCalculo, setErroCalculo] = useState("");
 
@@ -96,10 +98,14 @@ export function MontadorEj({
       recalcularEj(url, linhaRef)
         .then((r) => {
           if (!vivo) return;
-          setRecalculo(r);
+          setRecalculo({ linha: linhaRef, r });
           setErroCalculo("");
         })
-        .catch((e) => vivo && setErroCalculo(e instanceof Error ? e.message : "Não foi possível calcular."))
+        .catch((e) => {
+          if (!vivo) return;
+          setRecalculo(null);
+          setErroCalculo(e instanceof Error ? e.message : "Não foi possível calcular.");
+        })
         .finally(() => vivo && setCalculando(false));
     }, 350);
     return () => {
@@ -126,7 +132,8 @@ export function MontadorEj({
     });
   };
 
-  const atual = podeCalcular && recalculo && recalculo.codigo === codigo ? recalculo : null;
+  const atual =
+    podeCalcular && recalculo && recalculo.linha === linhaRef && recalculo.r.codigo === codigo ? recalculo.r : null;
 
   const salvar = (enviar: boolean) => {
     if (!atual) {

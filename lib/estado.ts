@@ -309,3 +309,28 @@ export function normalizar(bruto: EstadoImportado | null | undefined): EstadoApp
     : empresas[0].id;
   return { empresaAtivaId, empresas, novidadesVistoId: migrado.novidadesVistoId ?? null };
 }
+
+/**
+ * Estado relido do servidor (ao voltar para o app) mantendo a empresa que está
+ * aberta aqui. O `empresaAtivaId` gravado é o do último aparelho que salvou;
+ * trocá-lo no meio de uma edição gravaria o que está aberto na empresa errada.
+ */
+export function manterEmpresaAtiva(novo: EstadoApp, empresaAtivaLocal: string | undefined): EstadoApp {
+  if (!empresaAtivaLocal || novo.empresaAtivaId === empresaAtivaLocal) return novo;
+  if (!novo.empresas.some((e) => e.id === empresaAtivaLocal)) return novo;
+  return { ...novo, empresaAtivaId: empresaAtivaLocal };
+}
+
+/**
+ * Exclui um orçamento e o que só existe por causa dele: o agendamento (que
+ * ficaria órfão na Agenda, com "a receber" errado). As saídas continuam — o
+ * dinheiro saiu — e só perdem o vínculo com o trabalho.
+ */
+export function removerOrcamento(empresa: Empresa, orcamentoId: string): Empresa {
+  return {
+    ...empresa,
+    orcamentos: empresa.orcamentos.filter((o) => o.id !== orcamentoId),
+    agendamentos: empresa.agendamentos.filter((a) => a.orcamentoId !== orcamentoId),
+    saidas: empresa.saidas.map((sd) => (sd.orcamentoId === orcamentoId ? { ...sd, orcamentoId: undefined } : sd)),
+  };
+}

@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-12-01",
+    data: "2026-11-12",
+    tipo: "correcao",
+    titulo: "Correções de segurança dos dados",
+    descricao:
+      "Voltar para o app depois de usar outro aparelho não troca mais a empresa aberta (antes, uma edição podia ir para a empresa errada). Excluir um orçamento agora avisa e apaga junto o agendamento e os pagamentos, em vez de deixar a Agenda com valores errados. Duplicar um orçamento não leva mais o código da mensagem do original, então colar a aprovação atualiza o orçamento certo. No Montar orçamento pela tabela do EJ, o preço salvo é sempre o do pacote escolhido. E \"Sair\" grava a última alteração antes de encerrar a sessão.",
+  },
+  {
     id: "2026-11-10-04",
     data: "2026-11-10",
     tipo: "novidade",

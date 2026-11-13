@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { codigoDeId, codigoServicoLivre, ETAPAS_PADRAO, mergeEmpresa, mudouPreco, normalizar } from "./estado";
+import {
+  codigoDeId,
+  codigoServicoLivre,
+  ETAPAS_PADRAO,
+  manterEmpresaAtiva,
+  mergeEmpresa,
+  mudouPreco,
+  normalizar,
+  removerOrcamento,
+} from "./estado";
 import type { EstadoImportado, Servico } from "./tipos";
 
 /** Estado como era gravado antes da agenda (contratos + numeração fixa, sem config). */
@@ -280,4 +289,35 @@ test("tipo do catálogo: produto fica, tipo desconhecido vira serviço (ausente)
   } as EstadoImportado)!.empresas[0];
   expect(e.servicos[0].tipo).toBe("produto");
   expect("tipo" in e.servicos[1]).toBe(false);
+});
+
+describe("manterEmpresaAtiva (releitura ao voltar para o app)", () => {
+  const a = mergeEmpresa({ id: "a" });
+  const b = mergeEmpresa({ id: "b" });
+  const doServidor = { empresaAtivaId: "b", empresas: [a, b], novidadesVistoId: null };
+
+  test("fica na empresa aberta aqui, não na do outro aparelho", () => {
+    expect(manterEmpresaAtiva(doServidor, "a").empresaAtivaId).toBe("a");
+  });
+  test("empresa removida no outro aparelho: vale a do servidor", () => {
+    expect(manterEmpresaAtiva(doServidor, "sumiu").empresaAtivaId).toBe("b");
+    expect(manterEmpresaAtiva(doServidor, undefined).empresaAtivaId).toBe("b");
+  });
+});
+
+describe("removerOrcamento", () => {
+  test("leva o agendamento junto e mantém a saída sem vínculo", () => {
+    const base = mergeEmpresa({ id: "e" });
+    const empresa = {
+      ...base,
+      orcamentos: [{ id: "o1" }, { id: "o2" }] as typeof base.orcamentos,
+      agendamentos: [{ id: "ag1", orcamentoId: "o1" }, { id: "ag2", orcamentoId: "o2" }] as typeof base.agendamentos,
+      saidas: [{ id: "s1", data: "2026-11-01", descricao: "Uber", categoria: "Transporte", valor: 20, orcamentoId: "o1" }],
+    };
+    const depois = removerOrcamento(empresa, "o1");
+    expect(depois.orcamentos.map((o) => o.id)).toEqual(["o2"]);
+    expect(depois.agendamentos.map((a) => a.id)).toEqual(["ag2"]);
+    expect(depois.saidas).toHaveLength(1);
+    expect(depois.saidas[0].orcamentoId).toBeUndefined();
+  });
 });

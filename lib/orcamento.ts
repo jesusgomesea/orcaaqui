@@ -54,6 +54,33 @@ export function acharClientePorTelefone(clientes: Cliente[], telefone: string): 
  * um "Instalação <2m" sumiria do PDF — pior, um nome de cliente importado de
  * CSV de terceiro poderia rodar script na sessão de quem importou.
  */
+/**
+ * Campos de um orçamento para a cópia ("Duplicar"). Fica de fora o que
+ * identifica ou pertence ao original: número, pagamentos, o código da [ref]
+ * (`codigoRef`/`refEj` — colar a aprovação casaria com o original e o
+ * sobrescreveria) e o que o parceiro já cumpriu (registros da parceria).
+ */
+export function camposDaCopia(o: Orcamento, novoId: () => string, hoje: string): Partial<Orcamento> {
+  const {
+    id: _id,
+    criadoEm: _criadoEm,
+    numero: _numero,
+    pagamentos: _pagamentos,
+    codigoRef: _codigoRef,
+    refEj: _refEj,
+    ...campos
+  } = o;
+  return {
+    ...campos,
+    data: hoje,
+    status: "rascunho",
+    itens: campos.itens.map((it) => ({ ...it, id: novoId() })),
+    ...(campos.parceria
+      ? { parceria: { contrapartidas: campos.parceria.contrapartidas.map((c) => ({ ...c, id: novoId(), registros: [] })) } }
+      : {}),
+  };
+}
+
 export function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, numero: string, empresa: Empresa) {
   const { subtotal, descontoValor, acrescimoValor, total } = calcOrcamentoTotais(o.itens, o.desconto, o.descontoTipo, o.acrescimo);
   const validoAte = addDaysStr(o.data, o.validadeDias);
@@ -92,8 +119,8 @@ export function gerarOrcamentoHtml(o: Orcamento, cliente: Cliente | undefined, n
         </div>
         <div style="text-align:right;">
           <div style="color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:4px;">Emitido em</div>
-          <div style="font-weight:600;">${formatDateBR(o.data)}</div>
-          <div style="color:#b54708;font-weight:600;margin-top:6px;">Válido até ${formatDateBR(validoAte)}</div>
+          <div style="font-weight:600;">${escapeHtml(formatDateBR(o.data))}</div>
+          <div style="color:#b54708;font-weight:600;margin-top:6px;">Válido até ${escapeHtml(formatDateBR(validoAte))}</div>
         </div>
       </div>
 
