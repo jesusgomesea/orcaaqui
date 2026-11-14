@@ -23,6 +23,7 @@ const empresa = {
   config: configPadrao("e1"),
   agendamentos: [],
   saidas: [],
+  entradasAvulsas: [],
   proximoNumero: 2,
 } satisfies Empresa;
 

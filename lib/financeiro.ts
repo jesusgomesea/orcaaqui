@@ -1,13 +1,14 @@
 // Entradas e saídas da empresa. Puro, coberto por lib/financeiro.test.ts.
 //
-// - Entradas não têm registro próprio: são os pagamentos de `Orcamento.pagamentos`
-//   (os mesmos da Agenda e dos recibos). Nada é duplicado.
+// - Entradas são os pagamentos de `Orcamento.pagamentos` (os mesmos da Agenda e
+//   dos recibos, nada é duplicado) mais as entradas avulsas de `Empresa.entradasAvulsas`
+//   (venda de um equipamento usado, aluguel, reembolso — dinheiro que não veio de orçamento).
 // - Saídas moram em `Empresa.saidas`, na moeda da empresa.
 // - Totais só somam o que está na moeda da empresa (como o "a receber" da
 //   Agenda): misturar R$ com US$ daria um número sem sentido. Contas em centavos.
 
 import { paraCentavos } from "./documentos/formatos";
-import type { CodigoMoeda, Empresa, Orcamento, Saida, TipoPagamento } from "./tipos";
+import type { CodigoMoeda, Empresa, EntradaAvulsa, Orcamento, Saida, TipoPagamento } from "./tipos";
 
 /** Sugestões do campo categoria (o campo aceita qualquer texto). */
 export const CATEGORIAS_SAIDA = [
@@ -21,42 +22,65 @@ export const CATEGORIAS_SAIDA = [
   "Outros",
 ];
 
+/** Sugestões de categoria para entrada avulsa. */
+export const CATEGORIAS_ENTRADA = [
+  "Venda de equipamento",
+  "Aluguel de equipamento",
+  "Reembolso",
+  "Aporte",
+  "Outros",
+];
+
 export const SEM_CATEGORIA = "Sem categoria";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-export interface Entrada {
-  /** Id do pagamento. */
+interface EntradaBase {
+  /** Id do pagamento ou da entrada avulsa. */
   id: string;
   /** YYYY-MM-DD */
   data: string;
   valor: number;
   moeda: CodigoMoeda;
-  tipo: TipoPagamento;
   forma: string;
   descricao?: string;
-  orcamento: Orcamento;
 }
+
+/** Pagamento de um orçamento, ou entrada avulsa (sempre na moeda da empresa). */
+export type Entrada =
+  | (EntradaBase & { origem: "pagamento"; tipo: TipoPagamento; orcamento: Orcamento })
+  | (EntradaBase & { origem: "avulsa"; categoria: string; avulsa: EntradaAvulsa });
 
 const somar = (valores: number[]) => valores.reduce((s, v) => s + paraCentavos(v), 0) / 100;
 const doMes = (data: string, mes: string) => (data || "").slice(0, 7) === mes;
 
-/** Todos os pagamentos recebidos, de todos os orçamentos, do mais recente ao mais antigo. */
+/** Pagamentos de todos os orçamentos e entradas avulsas, do mais recente ao mais antigo. */
 export function entradas(empresa: Empresa): Entrada[] {
-  return empresa.orcamentos
-    .flatMap((o) =>
-      (o.pagamentos ?? []).map((p) => ({
-        id: p.id,
-        data: p.data,
-        valor: Number(p.valor) || 0,
-        moeda: o.moeda || empresa.moeda,
-        tipo: p.tipo,
-        forma: p.forma,
-        descricao: p.descricao,
-        orcamento: o,
-      }))
-    )
-    .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+  const pagamentos: Entrada[] = empresa.orcamentos.flatMap((o) =>
+    (o.pagamentos ?? []).map((p) => ({
+      origem: "pagamento" as const,
+      id: p.id,
+      data: p.data,
+      valor: Number(p.valor) || 0,
+      moeda: o.moeda || empresa.moeda,
+      tipo: p.tipo,
+      forma: p.forma,
+      descricao: p.descricao,
+      orcamento: o,
+    }))
+  );
+  const avulsas: Entrada[] = (empresa.entradasAvulsas ?? []).map((a) => ({
+    origem: "avulsa" as const,
+    id: a.id,
+    data: a.data,
+    valor: Number(a.valor) || 0,
+    moeda: empresa.moeda,
+    forma: a.forma ?? "",
+    descricao: a.descricao,
+    categoria: a.categoria,
+    avulsa: a,
+  }));
+  return [...pagamentos, ...avulsas].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
 }
 
 /** Saídas do mais recente ao mais antigo. */
@@ -65,8 +89,10 @@ export function saidasOrdenadas(saidas: Saida[]): Saida[] {
 }
 
 export interface ResumoMes {
-  /** Pagamentos recebidos no mês, na moeda da empresa. */
+  /** Pagamentos e entradas avulsas do mês, na moeda da empresa. */
   recebido: number;
+  /** Parte de `recebido` que veio de entradas avulsas. */
+  recebidoAvulso: number;
   saidas: number;
   /** recebido − saídas (pode ser negativo). */
   saldo: number;
@@ -79,9 +105,11 @@ export function resumoMes(empresa: Empresa, mes: string): ResumoMes {
   const doPeriodo = entradas(empresa).filter((e) => doMes(e.data, mes));
   const naMoeda = doPeriodo.filter((e) => e.moeda === empresa.moeda);
   const recebido = somar(naMoeda.map((e) => e.valor));
+  const recebidoAvulso = somar(naMoeda.filter((e) => e.origem === "avulsa").map((e) => e.valor));
   const saidas = somar(empresa.saidas.filter((s) => doMes(s.data, mes)).map((s) => s.valor));
   return {
     recebido,
+    recebidoAvulso,
     saidas,
     saldo: (paraCentavos(recebido) - paraCentavos(saidas)) / 100,
     entradasOutraMoeda: doPeriodo.length - naMoeda.length,
@@ -161,9 +189,9 @@ export function resultadoDoOrcamento(empresa: Empresa, orcamento: Orcamento): Re
 }
 
 /** Categorias já usadas na empresa, para sugerir junto das padrão (sem repetir). */
-export function categoriasSugeridas(saidas: Saida[]): string[] {
-  const usadas = saidas.map((s) => s.categoria.trim()).filter(Boolean);
-  const todas = [...CATEGORIAS_SAIDA, ...usadas];
+export function categoriasSugeridas(lancamentos: { categoria: string }[], padrao: string[] = CATEGORIAS_SAIDA): string[] {
+  const usadas = lancamentos.map((s) => s.categoria.trim()).filter(Boolean);
+  const todas = [...padrao, ...usadas];
   const vistos = new Set<string>();
   return todas.filter((c) => {
     const chave = c.toLowerCase();

@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FormSaida, saidaVazia, type SaidaForm } from "@/components/financeiro/FormSaida";
+import { FormEntradaAvulsa, entradaAvulsaVazia, type EntradaAvulsaForm } from "@/components/financeiro/FormEntradaAvulsa";
 import { entradas, resumoMes, rotuloMes, saidasOrdenadas, saidasPorCategoria } from "@/lib/financeiro";
 import { PAGAMENTO_LABEL } from "@/lib/documentos/campos";
 import { formatDateBR, formatMoney, formatarNumeroOrcamento, todayStr } from "@/lib/helpers";
@@ -39,12 +40,14 @@ function Kpi({ icon: Icon, label, value, tom }: { icon: LucideIcon; label: strin
 }
 
 export default function FinanceiroPage() {
-  const { empresaAtiva, removeSaida } = useStore();
+  const { empresaAtiva, removeSaida, removeEntradaAvulsa } = useStore();
   const moeda = empresaAtiva.moeda;
   const $ = (v: number) => formatMoney(v, moeda);
   const mesAtual = todayStr().slice(0, 7);
   const [mes, setMes] = useState(mesAtual);
   const [editando, setEditando] = useState<SaidaForm | null>(null);
+  const [editandoEntrada, setEditandoEntrada] = useState<EntradaAvulsaForm | null>(null);
+  const [aba, setAba] = useState("saidas");
 
   const resumo = resumoMes(empresaAtiva, mes);
   const saidasDoMes = saidasOrdenadas(empresaAtiva.saidas).filter((s) => s.data.slice(0, 7) === mes);
@@ -63,12 +66,28 @@ export default function FinanceiroPage() {
     removeSaida(id);
     toast.success("Saída excluída.");
   };
+  const excluirEntrada = (id: string, descricao: string) => {
+    if (!confirm(`Excluir a entrada "${descricao}"?`)) return;
+    removeEntradaAvulsa(id);
+    toast.success("Entrada excluída.");
+  };
 
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[21px] font-bold text-text">Financeiro</h1>
-        <Button onClick={() => setEditando(saidaVazia())}>+ Nova saída</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setAba("entradas");
+              setEditandoEntrada(entradaAvulsaVazia());
+            }}
+          >
+            + Nova entrada
+          </Button>
+          <Button onClick={() => setEditando(saidaVazia())}>+ Nova saída</Button>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-2">
@@ -89,13 +108,18 @@ export default function FinanceiroPage() {
         <Kpi icon={ArrowUpCircle} label="Saídas no mês" value={$(resumo.saidas)} />
         <Kpi icon={Scale} label="Saldo do mês" value={$(resumo.saldo)} tom={resumo.saldo < 0 ? "vermelho" : resumo.saldo > 0 ? "verde" : undefined} />
       </div>
+      {resumo.recebidoAvulso > 0 && (
+        <p className="-mt-3 mb-4 text-[12px] text-text-muted">
+          Do recebido, {$(resumo.recebidoAvulso)} veio de entradas avulsas.
+        </p>
+      )}
       {resumo.entradasOutraMoeda > 0 && (
         <p className="-mt-3 mb-4 text-[12px] text-text-muted">
           {resumo.entradasOutraMoeda === 1 ? "1 pagamento" : `${resumo.entradasOutraMoeda} pagamentos`} em outra moeda ficaram fora do total.
         </p>
       )}
 
-      <Tabs defaultValue="saidas">
+      <Tabs value={aba} onValueChange={setAba}>
         <TabsList>
           <TabsTrigger value="saidas">Saídas</TabsTrigger>
           <TabsTrigger value="entradas">Entradas</TabsTrigger>
@@ -139,28 +163,52 @@ export default function FinanceiroPage() {
         <TabsContent value="entradas">
           <Card className="p-0 md:p-2">
             {entradasDoMes.length === 0 ? (
-              <EmptyState message={`Nenhum pagamento recebido em ${rotuloMes(mes)}.`} />
+              <EmptyState message={`Nada recebido em ${rotuloMes(mes)}.`} />
             ) : (
               <ul className="divide-y divide-border">
-                {entradasDoMes.map((e) => (
-                  <li key={e.id} className="flex items-center gap-3 p-3.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13.5px] font-semibold text-text">
-                        {formatarNumeroOrcamento(e.orcamento.numero)} · {nomeCliente(e.orcamento.clienteId)}
+                {entradasDoMes.map((e) =>
+                  e.origem === "pagamento" ? (
+                    <li key={e.id} className="flex items-center gap-3 p-3.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-semibold text-text">
+                          {formatarNumeroOrcamento(e.orcamento.numero)} · {nomeCliente(e.orcamento.clienteId)}
+                        </div>
+                        <div className="truncate text-[12px] text-text-muted">
+                          {formatDateBR(e.data)} · {e.tipo === "outro" && e.descricao ? e.descricao : PAGAMENTO_LABEL[e.tipo]}
+                          {e.forma ? ` · ${e.forma}` : ""}
+                        </div>
                       </div>
-                      <div className="truncate text-[12px] text-text-muted">
-                        {formatDateBR(e.data)} · {e.tipo === "outro" && e.descricao ? e.descricao : PAGAMENTO_LABEL[e.tipo]}
-                        {e.forma ? ` · ${e.forma}` : ""}
+                      <div className="shrink-0 text-[13.5px] font-bold text-success">+{formatMoney(e.valor, e.moeda)}</div>
+                    </li>
+                  ) : (
+                    <li key={e.id} className="flex items-center gap-3 p-3.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-semibold text-text">
+                          <span className="truncate">{e.descricao}</span>
+                          <Badge>{e.categoria || "Avulsa"}</Badge>
+                        </div>
+                        <div className="truncate text-[12px] text-text-muted">
+                          {formatDateBR(e.data)} · entrada avulsa{e.forma ? ` · ${e.forma}` : ""}
+                        </div>
                       </div>
-                    </div>
-                    <div className="shrink-0 text-[13.5px] font-bold text-success">+{formatMoney(e.valor, e.moeda)}</div>
-                  </li>
-                ))}
+                      <div className="shrink-0 text-[13.5px] font-bold text-success">+{formatMoney(e.valor, e.moeda)}</div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button variant="secondary" size="sm" onClick={() => setEditandoEntrada({ ...e.avulsa })} aria-label={`Editar ${e.descricao}`}>
+                          <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        </Button>
+                        <Button variant="danger" size="sm" onClick={() => excluirEntrada(e.id, e.descricao ?? "")} aria-label={`Excluir ${e.descricao}`}>
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        </Button>
+                      </div>
+                    </li>
+                  )
+                )}
               </ul>
             )}
           </Card>
           <p className="mt-2 text-[12px] text-text-muted">
-            As entradas são os pagamentos registrados na Agenda ou em &quot;Contrato e recibos&quot; de cada orçamento.
+            As entradas são os pagamentos registrados na Agenda ou em &quot;Contrato e recibos&quot; de cada orçamento, mais as
+            entradas avulsas (venda de um equipamento, aluguel, reembolso) lançadas em &quot;+ Nova entrada&quot;.
           </p>
         </TabsContent>
 
@@ -192,6 +240,13 @@ export default function FinanceiroPage() {
       <Dialog open={!!editando} onOpenChange={(aberto) => !aberto && setEditando(null)}>
         <DialogContent>
           {editando && <FormSaida key={editando.id ?? "nova"} saida={editando} onFechar={() => setEditando(null)} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!editandoEntrada} onOpenChange={(aberto) => !aberto && setEditandoEntrada(null)}>
+        <DialogContent>
+          {editandoEntrada && (
+            <FormEntradaAvulsa key={editandoEntrada.id ?? "nova"} entrada={editandoEntrada} onFechar={() => setEditandoEntrada(null)} />
+          )}
         </DialogContent>
       </Dialog>
     </div>

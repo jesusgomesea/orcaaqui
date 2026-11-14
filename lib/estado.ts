@@ -16,6 +16,7 @@ import {
   type EtapaAgenda,
   type EstadoApp,
   type EstadoImportado,
+  type EntradaAvulsa,
   type FaixaDeslocamento,
   type Saida,
   type Servico,
@@ -88,6 +89,7 @@ export function defaultEmpresa(id: string = uuid()): Empresa {
     config: configPadrao(id),
     agendamentos: [],
     saidas: [],
+    entradasAvulsas: [],
     proximoNumero: 1,
   };
 }
@@ -186,8 +188,8 @@ function normalizarServicos(brutos: Servico[]): Servico[] {
 
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Saídas de backup ou servidor: descarta o que não tem data válida; valor nunca negativo. */
-export function normalizarSaidas(brutos: unknown): Saida[] {
+/** Lançamentos (saídas, entradas avulsas) de backup ou servidor: descarta o que não tem data válida; valor nunca negativo. */
+function normalizarLancamentos(brutos: unknown): (EntradaAvulsa & { orcamentoId?: string })[] {
   if (!Array.isArray(brutos)) return [];
   const ids = new Set<string>();
   return brutos.filter(ehObjeto).flatMap((b) => {
@@ -195,7 +197,7 @@ export function normalizarSaidas(brutos: unknown): Saida[] {
     const data = textoOu(b.data).trim();
     if (!DATA_ISO.test(data) || ids.has(id)) return [];
     ids.add(id);
-    const s: Saida = {
+    const s: EntradaAvulsa & { orcamentoId?: string } = {
       id,
       data,
       descricao: textoOu(b.descricao),
@@ -210,6 +212,15 @@ export function normalizarSaidas(brutos: unknown): Saida[] {
     if (observacoes) s.observacoes = observacoes;
     return [s];
   });
+}
+
+export function normalizarSaidas(brutos: unknown): Saida[] {
+  return normalizarLancamentos(brutos);
+}
+
+/** Entrada avulsa não liga a orçamento (aí seria um pagamento): o vínculo é descartado. */
+export function normalizarEntradasAvulsas(brutos: unknown): EntradaAvulsa[] {
+  return normalizarLancamentos(brutos).map(({ orcamentoId: _orcamentoId, ...e }) => e);
 }
 
 function normalizarAgendamentos(brutos: unknown): Agendamento[] {
@@ -279,6 +290,7 @@ export function mergeEmpresa(parcial: Partial<Empresa>): Empresa {
     config: normalizarConfig(parcial.config, id),
     agendamentos: normalizarAgendamentos(parcial.agendamentos),
     saidas: normalizarSaidas(parcial.saidas),
+    entradasAvulsas: normalizarEntradasAvulsas(parcial.entradasAvulsas),
   });
 }
 

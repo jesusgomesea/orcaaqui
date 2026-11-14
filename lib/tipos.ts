@@ -270,6 +270,23 @@ export interface Saida {
   observacoes?: string;
 }
 
+/**
+ * Dinheiro que entrou sem ser pagamento de orçamento: venda de um notebook
+ * usado, aluguel de equipamento, reembolso… Soma no "recebido" do Financeiro
+ * junto com os pagamentos. Sempre na moeda da empresa.
+ */
+export interface EntradaAvulsa {
+  id: string;
+  /** YYYY-MM-DD */
+  data: string;
+  descricao: string;
+  categoria: string;
+  valor: number;
+  /** Pix, cartão, dinheiro… */
+  forma?: string;
+  observacoes?: string;
+}
+
 export interface Empresa {
   id: string;
   nome: string;
@@ -290,6 +307,7 @@ export interface Empresa {
   config: ConfigEmpresa;
   agendamentos: Agendamento[];
   saidas: Saida[];
+  entradasAvulsas: EntradaAvulsa[];
   /** Contador monotônico de `Orcamento.numero`. Nunca reaproveita número de excluído. */
   proximoNumero: number;
 }
