@@ -67,6 +67,7 @@ Forma dos dados (as interfaces vivem em [lib/tipos.ts](lib/tipos.ts)):
     }],
     servicos: [{ id, categoria, nome, descricao, valor, codigo, unidade?, precoVolume?, volumeMin?, prazo?, ativo?, tipo? /* produto; ausente = serviço */ }],
     saidas: [{ id, data, descricao, categoria, valor, forma?, orcamentoId?, observacoes? }],
+    entradasAvulsas: [{ id, data, descricao, categoria, valor, forma?, observacoes? }],
     prestador?: { habilitado, nome, cpf, endereco, whatsapp, email, pix, modeloVersao },
     config: { sinalPercentual /* 40 */, validadeDias, deslocamentos: [{ id, nome, valor }],
               etapasAgenda: [{ id, nome, descricao? }], urlTabelaEj?, versaoCatalogo, codigo },
@@ -111,7 +112,7 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/painel`** ([page.tsx](app/(app)/painel/page.tsx)) — Painel: KPIs (inclusive "a receber" e serviços dos próximos 30 dias, de `resumoAgenda`), próximos serviços, gráfico de faturamento (orçado x aprovado, últimos 6 meses, via `recharts`) e tabela de orçamentos "enviados" perto do vencimento
 - **`/orcamentos`** — "Montar orçamento" (gerador, ver abaixo) e CRUD completo com itens dinâmicos (com seletor de serviço do catálogo pra autopreencher), desconto em valor/%, acréscimo, moeda por orçamento, PDF (impressão), texto pronto pro WhatsApp (`wa.me`), duplicar
 - **`/agenda`** ([page.tsx](app/(app)/agenda/page.tsx)) — agendamentos em abas Agenda/Entregues/Cancelados, busca, números (aguardando, próximos 30 dias, a receber), **Colar orçamento** e detalhe (etapas, data/local, valor combinado, extras, pagamentos, notas). Ver "Agenda e colar orçamento"
-- **`/financeiro`** ([page.tsx](app/(app)/financeiro/page.tsx)) — mês a mês: recebido, saídas e saldo; abas Saídas (CRUD), Entradas (pagamentos do mês) e Por categoria. Ver "Financeiro"
+- **`/financeiro`** ([page.tsx](app/(app)/financeiro/page.tsx)) — mês a mês: recebido, saídas e saldo; abas Saídas (CRUD), Entradas (pagamentos do mês + entradas avulsas, com CRUD das avulsas) e Por categoria. Ver "Financeiro"
 - **`/clientes`** — CRUD simples + importar/exportar CSV (`clientesParaCsv`/`csvParaClientes` em helpers.ts — parser próprio, sem dependência)
 - **`/servicos`** — "Serviços e produtos": catálogo com preço padrão, filtrado por tipo, reaproveitado no gerador e no formulário de orçamento
 - **`/empresa`** — conta (trocar senha), gestão de empresas (criar/trocar/remover), dados da empresa ativa, logo, cor, moeda, dados bancários/Pix, backup JSON
@@ -194,7 +195,8 @@ Uma parceria é um **orçamento com `parceria`** ([lib/parceria.ts](lib/parceria
 ## Financeiro
 Entradas e saídas da empresa ([lib/financeiro.ts](lib/financeiro.ts), testado):
 
-- **Entradas não têm registro próprio**: são os pagamentos de `Orcamento.pagamentos` — os mesmos da Agenda e dos recibos. Não criar outra lista.
+- **Entradas de trabalho não têm registro próprio**: são os pagamentos de `Orcamento.pagamentos` — os mesmos da Agenda e dos recibos. Não criar outra lista para eles.
+- **Entradas avulsas** (`Empresa.entradasAvulsas`, [FormEntradaAvulsa](components/financeiro/FormEntradaAvulsa.tsx)): dinheiro que não veio de orçamento — venda de um notebook usado, aluguel de equipamento, reembolso. Mesmo formato da saída, sem `orcamentoId` (ligada a um trabalho seria um pagamento; `normalizarEntradasAvulsas` descarta o vínculo), sempre na moeda da empresa. `entradas()` devolve as duas origens (`origem: "pagamento" | "avulsa"`); o "recebido" de `resumoMes`/`serieMensal` soma as duas e expõe a parte avulsa em `recebidoAvulso`. Não entram em `resultadoDoOrcamento`, "a receber" nem recibos.
 - **Saídas** moram em `Empresa.saidas` (`normalizarSaidas` em `estado.ts` descarta data inválida e valor negativo), na moeda da empresa, com categoria livre (sugestões em `CATEGORIAS_SAIDA` + as já usadas) e **`orcamentoId` opcional**: ligada a um trabalho, entra em "Custos e resultado" do detalhe da Agenda ([ResultadoTrabalho](components/financeiro/ResultadoTrabalho.tsx): recebido − saídas ligadas). Excluir o orçamento mantém a saída e só tira o vínculo.
 - **Totais só na moeda da empresa** (como o "a receber" da Agenda); pagamento em outra moeda fica fora e a tela diz quantos. Contas em centavos.
 - Formulário único em [FormSaida](components/financeiro/FormSaida.tsx) (tela Financeiro e Agenda). Painel: "Financeiro do mês" (recebido, saídas, saldo), gráfico entradas x saídas (6 meses, `serieMensal`) e saídas por categoria do mês.

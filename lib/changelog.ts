@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-13-01",
+    data: "2026-11-13",
+    tipo: "novidade",
+    titulo: "Entradas avulsas no Financeiro",
+    descricao:
+      "Além dos pagamentos dos orçamentos, agora dá para lançar dinheiro que entrou por outro caminho — a venda de um notebook usado, o aluguel de um equipamento, um reembolso. Use \"+ Nova entrada\" no Financeiro: o valor soma no recebido e no saldo do mês, aparece na aba Entradas (com categoria) e entra no gráfico do Painel.",
+  },
+  {
     id: "2026-11-12-01",
     data: "2026-11-12",
     tipo: "correcao",

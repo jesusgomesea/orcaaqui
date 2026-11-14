@@ -32,6 +32,7 @@ import type {
   Cliente,
   ConfigEmpresa,
   Empresa,
+  EntradaAvulsa,
   EstadoApp,
   EstadoImportado,
   Orcamento,
@@ -110,6 +111,9 @@ interface StoreValue {
   addSaida: (saida: Omit<Saida, "id">) => Saida;
   updateSaida: (id: string, patch: Partial<Omit<Saida, "id">>) => void;
   removeSaida: (id: string) => void;
+  addEntradaAvulsa: (entrada: Omit<EntradaAvulsa, "id">) => EntradaAvulsa;
+  updateEntradaAvulsa: (id: string, patch: Partial<Omit<EntradaAvulsa, "id">>) => void;
+  removeEntradaAvulsa: (id: string) => void;
   /**
    * Grava agora o que estiver pendente (sem esperar o debounce). Usado antes
    * de gerar contrato/recibo, porque o servidor lê os dados já gravados.
@@ -536,6 +540,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patchEmpresaAtiva]
   );
 
+  const addEntradaAvulsa = useCallback(
+    (entrada: Omit<EntradaAvulsa, "id">) => {
+      const nova: EntradaAvulsa = { ...entrada, id: uuid() };
+      patchEmpresaAtiva((e) => ({ ...e, entradasAvulsas: [...e.entradasAvulsas, nova] }));
+      return nova;
+    },
+    [patchEmpresaAtiva]
+  );
+  const updateEntradaAvulsa = useCallback(
+    (id: string, patch: Partial<Omit<EntradaAvulsa, "id">>) =>
+      patchEmpresaAtiva((e) => ({
+        ...e,
+        entradasAvulsas: e.entradasAvulsas.map((en) => (en.id === id ? { ...en, ...patch } : en)),
+      })),
+    [patchEmpresaAtiva]
+  );
+  const removeEntradaAvulsa = useCallback(
+    (id: string) => patchEmpresaAtiva((e) => ({ ...e, entradasAvulsas: e.entradasAvulsas.filter((en) => en.id !== id) })),
+    [patchEmpresaAtiva]
+  );
+
   const value = useMemo<StoreValue | null>(
     () =>
       state && empresaAtiva
@@ -570,6 +595,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             addSaida,
             updateSaida,
             removeSaida,
+            addEntradaAvulsa,
+            updateEntradaAvulsa,
+            removeEntradaAvulsa,
           }
         : null,
     [
@@ -580,6 +608,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       marcarNovidadesVistas, garantirSalvo, updateConfig, aplicarSinalATodas,
       aprovarColagem, agendarOrcamentoAtivo, updateAgendamento, removeAgendamento,
       addSaida, updateSaida, removeSaida,
+      addEntradaAvulsa, updateEntradaAvulsa, removeEntradaAvulsa,
     ]
   );
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { defaultEmpresa, normalizarSaidas } from "./estado";
+import { defaultEmpresa, mergeEmpresa, normalizarEntradasAvulsas, normalizarSaidas } from "./estado";
 import {
   categoriasSugeridas,
   entradas,
@@ -48,8 +48,8 @@ describe("financeiro", () => {
   });
 
   test("resumo do mês: só a moeda da empresa entra no total, em centavos", () => {
-    expect(resumoMes(empresa(), "2026-11")).toEqual({ recebido: 1000, saidas: 1630, saldo: -630, entradasOutraMoeda: 1 });
-    expect(resumoMes(empresa(), "2026-10")).toEqual({ recebido: 1000, saidas: 120, saldo: 880, entradasOutraMoeda: 0 });
+    expect(resumoMes(empresa(), "2026-11")).toEqual({ recebido: 1000, recebidoAvulso: 0, saidas: 1630, saldo: -630, entradasOutraMoeda: 1 });
+    expect(resumoMes(empresa(), "2026-10")).toEqual({ recebido: 1000, recebidoAvulso: 0, saidas: 120, saldo: 880, entradasOutraMoeda: 0 });
     expect(resumoMes(empresa(), "2026-09").saldo).toBe(0);
   });
 
@@ -104,5 +104,50 @@ describe("normalizarSaidas (backup e servidor)", () => {
       { id: "c", data: "2026-11-05", descricao: "negativa", categoria: "", valor: 0 },
     ]);
     expect(normalizarSaidas(undefined)).toEqual([]);
+  });
+});
+
+describe("entradas avulsas", () => {
+  const comAvulsas = (): Empresa => ({
+    ...empresa(),
+    entradasAvulsas: [
+      { id: "notebook", data: "2026-11-15", descricao: "Venda do notebook", categoria: "Venda de equipamento", valor: 2500.5, forma: "Pix" },
+      { id: "reembolso", data: "2026-10-20", descricao: "Reembolso", categoria: "", valor: 30 },
+    ],
+  });
+
+  test("entram na lista junto com os pagamentos, na moeda da empresa", () => {
+    const lista = entradas(comAvulsas());
+    expect(lista.map((e) => e.id)).toEqual(["p2", "notebook", "p4", "p1", "reembolso", "p3"]);
+    const nb = lista.find((e) => e.id === "notebook");
+    expect(nb?.origem).toBe("avulsa");
+    expect(nb?.moeda).toBe("BRL");
+  });
+
+  test("somam no recebido e no saldo do mês, com a parte avulsa separada", () => {
+    expect(resumoMes(comAvulsas(), "2026-11")).toEqual({
+      recebido: 3500.5, recebidoAvulso: 2500.5, saidas: 1630, saldo: 1870.5, entradasOutraMoeda: 1,
+    });
+    expect(serieMensal(comAvulsas(), "2026-11-10", 2).map((p) => p.entradas)).toEqual([1030, 3500.5]);
+  });
+
+  test("não mexem no resultado de um trabalho", () => {
+    const e = comAvulsas();
+    expect(resultadoDoOrcamento(e, e.orcamentos[0]).recebido).toBe(1000);
+  });
+
+  test("normalização: mesmas regras das saídas, sem vínculo com orçamento", () => {
+    expect(
+      normalizarEntradasAvulsas([
+        { id: "a", data: "2026-11-15", descricao: "Notebook", categoria: "Venda", valor: 100, orcamentoId: "o1" },
+        { id: "b", data: "ontem", descricao: "x", categoria: "", valor: 1 },
+        { id: "c", data: "2026-11-16", descricao: "neg", categoria: "", valor: -5 },
+      ])
+    ).toEqual([
+      { id: "a", data: "2026-11-15", descricao: "Notebook", categoria: "Venda", valor: 100 },
+      { id: "c", data: "2026-11-16", descricao: "neg", categoria: "", valor: 0 },
+    ]);
+    // Conta antiga, gravada antes do campo existir, abre com a lista vazia.
+    expect(mergeEmpresa({ id: "antiga" }).entradasAvulsas).toEqual([]);
   });
 });
