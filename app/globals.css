@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./vidro.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -17,8 +18,10 @@
 
   --bg:#f4f4f5;
   --surface:#ffffff;
-  --surface-2:#f1f1f4;
-  --border:#e4e4e7;
+  /* campo, botão secundário, abas: translúcidos (sem blur) para o vidro de
+     trás aparecer — ver app/vidro.css */
+  --surface-2:rgb(24 24 27 / 6%);
+  --border:rgb(24 24 27 / 11%);
   --border-strong:#d4d4d8;
   --text:#0b0b0f;
   --text-muted:#52525b;
@@ -48,14 +51,6 @@
   --toast-bg:#0b0b0f;
   --toast-text:#fafafa;
 
-  /* Liquid Glass (primeira versão — ver docs/liquid-glass-pendente.md) */
-  --vidro:rgb(255 255 255 / 55%);
-  --vidro-forte:rgb(255 255 255 / 74%);
-  --vidro-borda:rgb(255 255 255 / 65%);
-  --vidro-rim1:.95;
-  --vidro-rim2:.5;
-  --vidro-sombra:0 1px 0 rgb(255 255 255 / 90%) inset, 0 18px 44px -14px rgb(30 40 60 / 22%);
-  --cena-opacidade:.5;
   color-scheme: light;
 }
 
@@ -67,8 +62,8 @@
 .dark{
   --bg:#09090b;
   --surface:#18181b;
-  --surface-2:#27272a;
-  --border:#27272a;
+  --surface-2:rgb(255 255 255 / 7%);
+  --border:rgb(255 255 255 / 8%);
   --border-strong:#3f3f46;
   --text:#fafafa;
   --text-muted:#a1a1aa;
@@ -93,14 +88,6 @@
 
   --toast-bg:#fafafa;
   --toast-text:#09090b;
-
-  --vidro:rgb(24 24 27 / 50%);
-  --vidro-forte:rgb(24 24 27 / 70%);
-  --vidro-borda:rgb(255 255 255 / 8%);
-  --vidro-rim1:.38;
-  --vidro-rim2:.12;
-  --vidro-sombra:0 1px 0 rgb(255 255 255 / 8%) inset, 0 18px 48px -12px rgb(0 0 0 / 55%);
-  --cena-opacidade:.75;
   color-scheme: dark;
 }
 
@@ -108,6 +95,9 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-vidro: var(--vidro);
+  --color-vidro-forte: var(--vidro-forte);
+  --color-vidro-realce: var(--vidro-realce);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
@@ -150,56 +140,6 @@
   left:50%;
   top:50%;
   translate:-50% -50%;
-}
-
-/* ---------- Liquid Glass ----------
-   O vidro é a moldura: o efeito fica na borda e no que aparece por trás; o
-   texto continua nítido. `.vidro` = cartões; `.vidro-forte` = navegação e
-   diálogos. Em @layer components para utilitários do Tailwind poderem
-   sobrescrever (ex.: `sticky` num Card). */
-@layer components{
-  .vidro,.vidro-forte{
-    position:relative;
-    background:var(--vidro);
-    -webkit-backdrop-filter:blur(20px) saturate(170%);
-    backdrop-filter:blur(20px) saturate(170%);
-    border:1px solid var(--vidro-borda);
-    box-shadow:var(--vidro-sombra);
-  }
-  .vidro-forte{background:var(--vidro-forte);}
-  /* Borda especular (rim): gradiente recortado em 1px. */
-  .vidro::before,.vidro-forte::before{
-    content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
-    background:linear-gradient(145deg,rgb(255 255 255 / var(--vidro-rim1)) 0%,transparent 34%,transparent 66%,rgb(255 255 255 / var(--vidro-rim2)) 100%);
-    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-    -webkit-mask-composite:xor;mask-composite:exclude;
-  }
-  /* Refração: só Chromium (classe posta por SCRIPT_REFRACAO) e só no cromo. */
-  html.refract .vidro-refracao{
-    backdrop-filter:url(#lg-refract) blur(14px) saturate(190%);
-  }
-}
-
-/* Fundo vivo: formas desfocadas na cor da empresa, atrás de tudo. */
-.cena-vidro{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:var(--cena-opacidade);}
-.cena-vidro svg{position:absolute;inset:-10%;width:120%;height:120%;}
-.cena-vidro .deriva-a{animation:cena-deriva 38s ease-in-out infinite alternate;transform-origin:50% 50%;}
-.cena-vidro .deriva-b{animation:cena-deriva2 46s ease-in-out infinite alternate;transform-origin:50% 50%;}
-@keyframes cena-deriva{to{transform:translate(-3%,2%) rotate(-3deg) scale(1.04);}}
-@keyframes cena-deriva2{to{transform:translate(3%,-2%) rotate(2deg) scale(1.06);}}
-.cena-vidro::after{content:"";position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-:root{--cena-1:var(--primary);--cena-2:var(--primary);--cena-3:var(--primary);}
-@supports (color: oklch(from red l c h)){
-  :root{
-    --cena-2:oklch(from var(--primary) l c calc(h + 55));
-    --cena-3:oklch(from var(--primary) l c calc(h - 70));
-  }
-}
-
-@media (prefers-reduced-transparency: reduce){
-  .vidro,.vidro-forte{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--surface);}
-  .cena-vidro{display:none;}
 }
 
 *{box-sizing:border-box;}

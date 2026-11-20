@@ -279,7 +279,7 @@ export default function ConfigPage() {
         <fieldset>
           <legend className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Identidade</legend>
           <div className="mb-4 flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border-strong bg-bg">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border-strong bg-surface-2">
               {empresaAtiva.logoDataUrl ? (
                 // A logo é uma data: URL guardada no próprio estado — next/image
                 // não ajuda aqui e ainda exigiria configuração de domínio.

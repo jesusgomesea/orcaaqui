@@ -80,7 +80,7 @@ function Sidebar() {
   const seletorEmpresa =
     state.empresas.length > 1 ? (
       <Select value={empresaAtiva.id} onValueChange={switchEmpresa}>
-        <SelectTrigger className="h-9 bg-surface text-[13px] sm:h-9 sm:text-[13px]"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-9 bg-surface-2 text-[13px] sm:h-9 sm:text-[13px]"><SelectValue /></SelectTrigger>
         <SelectContent>
           {state.empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome || "(sem nome)"}</SelectItem>)}
         </SelectContent>
@@ -145,7 +145,7 @@ function Sidebar() {
         {aba("/painel", "Painel", LayoutDashboard)}
         {aba("/orcamentos", "Orçamentos", FileText)}
         <Link href={HREF_MONTAR} onClick={abrirMontador} aria-label="Montar orçamento" className="flex justify-center">
-          <span className="grid h-[50px] w-[50px] place-items-center rounded-full bg-primary text-sobre-primary shadow-[var(--shadow-md)] transition-transform active:scale-95">
+          <span className="grid h-[50px] w-[50px] place-items-center gel rounded-full transition-transform active:scale-95">
             <Plus className="h-[26px] w-[26px]" strokeWidth={2.2} />
           </span>
         </Link>
@@ -173,11 +173,11 @@ function Sidebar() {
             onClick={(e) => e.stopPropagation()}
           >
             {ITEMS.slice(3).map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} className={cn(CLASSE_ITEM, "w-full", ativo(href) ? "bg-surface-2 text-text" : "text-text hover:bg-surface-2")}>
+              <Link key={href} href={href} className={cn(CLASSE_ITEM, "w-full", ativo(href) ? "vidro-realce text-text" : "text-text hover:bg-vidro-realce")}>
                 <Icon className={cn("h-5 w-5 shrink-0", ativo(href) ? "text-primary-texto" : "text-text-muted")} strokeWidth={1.8} /> {label}
               </Link>
             ))}
-            <Link href="/novidades" className={cn(CLASSE_ITEM, "w-full", ativo("/novidades") ? "bg-surface-2 text-text" : "text-text hover:bg-surface-2")}>
+            <Link href="/novidades" className={cn(CLASSE_ITEM, "w-full", ativo("/novidades") ? "vidro-realce text-text" : "text-text hover:bg-vidro-realce")}>
               <Bell className="h-5 w-5 shrink-0 text-text-muted" strokeWidth={1.8} /> Novidades
               {naoVistas > 0 && (
                 <span className="ml-auto rounded-full bg-danger px-2 text-[11px] font-bold text-white">{naoVistas > 9 ? "9+" : naoVistas}</span>
@@ -185,7 +185,7 @@ function Sidebar() {
             </Link>
             <div className="mt-1 border-t border-border pt-1">
               <div className="truncate px-3.5 py-1.5 text-[12px] text-text-muted">{usuario?.email}</div>
-              <button type="button" onClick={handleSair} className={cn(CLASSE_ITEM, "w-full text-danger hover:bg-surface-2")}>
+              <button type="button" onClick={handleSair} className={cn(CLASSE_ITEM, "w-full text-danger hover:bg-vidro-realce")}>
                 <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.8} /> Sair
               </button>
             </div>
@@ -212,12 +212,12 @@ function Sidebar() {
 
         <nav className="flex flex-col gap-0.5">
           {ITEMS.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} className={cn(CLASSE_ITEM, ativo(href) ? "bg-surface text-text" : "text-text-muted hover:bg-surface hover:text-text")}>
+            <Link key={href} href={href} className={cn(CLASSE_ITEM, ativo(href) ? "vidro-realce text-text" : "text-text-muted hover:bg-vidro-realce hover:text-text")}>
               <Icon className={cn("h-[18px] w-[18px] shrink-0", ativo(href) && "text-primary-texto")} strokeWidth={1.8} />
               <span>{label}</span>
             </Link>
           ))}
-          <Link href="/novidades" className={cn(CLASSE_ITEM, ativo("/novidades") ? "bg-surface text-text" : "text-text-muted hover:bg-surface hover:text-text")}>
+          <Link href="/novidades" className={cn(CLASSE_ITEM, ativo("/novidades") ? "vidro-realce text-text" : "text-text-muted hover:bg-vidro-realce hover:text-text")}>
             <span className="relative">
               <Bell className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
               {naoVistas > 0 && (
@@ -241,7 +241,7 @@ function Sidebar() {
             </div>
           )}
           <div className="truncate px-3.5 text-[12px] text-text-muted" title={usuario?.email}>{usuario?.email}</div>
-          <button type="button" onClick={handleSair} className={cn(CLASSE_ITEM, "mt-1 w-full text-text-muted hover:bg-surface hover:text-text")}>
+          <button type="button" onClick={handleSair} className={cn(CLASSE_ITEM, "mt-1 w-full text-text-muted hover:bg-vidro-realce hover:text-text")}>
             <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
             Sair
           </button>

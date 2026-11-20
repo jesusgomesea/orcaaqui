@@ -327,7 +327,7 @@ export function MontadorEj({
       </div>
 
       <aside className="md:sticky md:top-0 md:self-start">
-        <div className="rounded-2xl border border-border bg-bg p-3.5 text-[13px]">
+        <div className="rounded-2xl border border-border bg-surface-2 p-3.5 text-[13px]">
           <div className="mb-2 font-semibold text-text">Resumo · {codigo}</div>
           {!podeCalcular && <p className="text-text-muted">Escolha um pacote.</p>}
           {podeCalcular && calculando && !atual && <p className="text-text-muted">Calculando pela tabela do EJ…</p>}
