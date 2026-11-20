@@ -4,6 +4,7 @@ import "@fontsource-variable/geist";
 import "./globals.css";
 import ProvedorSessao from "@/components/auth/ProvedorSessao";
 import { SCRIPT_TEMA } from "@/lib/tema";
+import { CenaVidro, SCRIPT_REFRACAO } from "@/components/layout/CenaVidro";
 
 export const metadata: Metadata = {
   title: "Orça Aqui — Orçamentos",
@@ -17,8 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_REFRACAO }} />
       </head>
       <body>
+        <CenaVidro />
         {/*
           ProvedorSessao mora aqui no layout raiz porque os links de e-mail do
           Identity (confirmação, recuperação, troca de e-mail) voltam com o

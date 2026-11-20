@@ -9,7 +9,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-sobre-primary hover:brightness-95",
+        // "Gel" do Liquid Glass: cor da empresa com gradiente vertical, brilho no topo e sombra colorida.
+        default:
+          "bg-[linear-gradient(180deg,var(--primary-light)_0%,var(--primary)_55%,var(--primary-dark)_100%)] text-sobre-primary shadow-[0_1px_0_rgb(255_255_255/35%)_inset,0_8px_22px_-8px_var(--primary-tint-strong)] hover:brightness-105",
         secondary: "bg-surface-2 text-text hover:bg-border-strong/60",
         danger: "bg-danger-tint text-danger hover:brightness-95",
         ghost: "bg-transparent text-text-muted hover:bg-surface-2 hover:text-text",

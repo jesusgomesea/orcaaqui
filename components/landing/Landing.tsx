@@ -105,7 +105,7 @@ export default function Landing() {
   const logado = !carregando && Boolean(usuario);
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div className="min-h-screen text-text">
       <header className="sticky top-0 z-10 border-b border-border bg-surface/85 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1100px] items-center justify-between gap-3 px-5">
           <Marca />
