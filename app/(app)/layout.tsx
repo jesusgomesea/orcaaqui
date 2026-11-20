@@ -8,7 +8,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <Protegido>
       <StoreProvider>
-        <div className="flex min-h-screen flex-col bg-bg text-text md:flex-row">
+        <div className="flex min-h-screen flex-col text-text md:flex-row">
           <CorDaEmpresa />
           <Sidebar />
           {/* pb-32 no celular: a barra de abas flutuante não pode cobrir o fim da página. */}

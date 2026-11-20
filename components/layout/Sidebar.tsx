@@ -13,6 +13,7 @@ import { useStore } from "@/lib/store";
 import { useSessao } from "@/components/auth/ProvedorSessao";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Marca } from "@/components/marca/Marca";
+import { buttonVariants } from "@/components/ui/button";
 import { NOVIDADES } from "@/lib/changelog";
 import BotaoTema from "./BotaoTema";
 
@@ -119,7 +120,7 @@ function Sidebar() {
     <>
       {/* ---------- Celular: topo ---------- */}
       <header
-        className="sticky top-0 z-30 flex items-center gap-3 bg-bg/85 px-4 pb-2.5 backdrop-blur-md md:hidden"
+        className="vidro-forte sticky top-0 z-30 flex items-center gap-3 rounded-b-[var(--radius-cartao)] border-t-0 px-4 pb-2.5 md:hidden"
         style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
       >
         <Marca tamanho={26} className="shrink-0" />
@@ -138,7 +139,7 @@ function Sidebar() {
       {/* ---------- Celular: abas flutuantes ---------- */}
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-3 z-30 mx-auto grid h-16 max-w-[536px] grid-cols-5 items-center rounded-full border border-border bg-surface/85 px-1.5 shadow-[var(--shadow-lg)] backdrop-blur-xl md:hidden"
+        className="vidro-forte vidro-refracao fixed inset-x-3 z-30 mx-auto grid h-16 max-w-[536px] grid-cols-5 items-center rounded-full px-1.5 md:hidden"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
       >
         {aba("/painel", "Painel", LayoutDashboard)}
@@ -167,7 +168,7 @@ function Sidebar() {
       {maisAberto && (
         <div className="fixed inset-0 z-20 bg-black/40 backdrop-blur-[2px] md:hidden" onClick={() => setMaisAbertoEm(null)}>
           <div
-            className="absolute inset-x-3 mx-auto max-w-[536px] rounded-[var(--radius-cartao)] border border-border bg-surface p-2 shadow-[var(--shadow-lg)]"
+            className="vidro-forte absolute inset-x-3 mx-auto max-w-[536px] rounded-[var(--radius-cartao)] p-2"
             style={{ bottom: "calc(env(safe-area-inset-bottom) + 86px)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -193,7 +194,7 @@ function Sidebar() {
       )}
 
       {/* ---------- Desktop: coluna lateral ---------- */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-1 p-5 md:flex">
+      <aside className="vidro-forte vidro-refracao sticky top-3.5 m-3.5 mr-0 hidden h-[calc(100vh-1.75rem)] w-60 shrink-0 flex-col gap-1 rounded-[26px] p-5 md:flex">
         <div className="mb-4 flex items-center justify-between gap-2 px-1">
           <Marca />
           <BotaoTema />
@@ -204,7 +205,7 @@ function Sidebar() {
         <Link
           href={HREF_MONTAR}
           onClick={abrirMontador}
-          className="mb-3 flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-[14px] font-semibold text-sobre-primary transition-[filter,transform] hover:brightness-95 active:scale-[.98]"
+          className={cn(buttonVariants(), "mb-3")}
         >
           <Plus className="h-4 w-4" strokeWidth={2.4} /> Montar orçamento
         </Link>

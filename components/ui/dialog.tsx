@@ -23,7 +23,7 @@ function DialogContent({
           // Celular: margem nas laterais, altura do viewport visível (dvh desconta a
           // barra do navegador) e menos respiro interno.
           "dialog-content z-50 w-[calc(100%-1.5rem)] max-w-[560px]",
-          "max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain rounded-[var(--radius-cartao)] border border-border bg-surface p-5 shadow-[var(--shadow-lg)]",
+          "max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain vidro-forte rounded-[var(--radius-cartao)] p-5",
           "sm:max-h-[calc(100dvh-5rem)] sm:p-6",
           className
         )}
