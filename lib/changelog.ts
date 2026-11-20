@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-20-01",
+    data: "2026-11-20",
+    tipo: "correcao",
+    titulo: "O tema escuro não se perde mais ao atualizar a página",
+    descricao:
+      "Quem usava o tema escuro (ou o claro) via a página voltar para o claro toda vez que atualizava. Agora o tema escolhido fica, em qualquer tela.",
+  },
+  {
     id: "2026-11-19-01",
     data: "2026-11-19",
     tipo: "melhoria",

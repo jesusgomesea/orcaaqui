@@ -38,3 +38,13 @@ export function CenaVidro() {
 /** Liga a refração só em Chromium (único que aceita url() no backdrop-filter). Inline no <head>. */
 export const SCRIPT_REFRACAO =
   'try{if(navigator.userAgentData&&navigator.userAgentData.brands.some(function(b){return /Chromium/.test(b.brand)}))document.documentElement.classList.add("refract")}catch(e){}';
+
+/** Mesma detecção do SCRIPT_REFRACAO, para o ClassesDoHtml reaplicar depois da hidratação. */
+export function suportaRefracao(): boolean {
+  try {
+    const ua = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData;
+    return Boolean(ua?.brands.some((b) => /Chromium/.test(b.brand)));
+  } catch {
+    return false;
+  }
+}
