@@ -5,6 +5,7 @@ import "./globals.css";
 import ProvedorSessao from "@/components/auth/ProvedorSessao";
 import { SCRIPT_TEMA } from "@/lib/tema";
 import { CenaVidro, SCRIPT_REFRACAO } from "@/components/layout/CenaVidro";
+import { ClassesDoHtml } from "@/components/layout/ClassesDoHtml";
 
 export const metadata: Metadata = {
   title: "Orça Aqui — Orçamentos",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_REFRACAO }} />
       </head>
       <body>
+        <ClassesDoHtml />
         <CenaVidro />
         {/*
           ProvedorSessao mora aqui no layout raiz porque os links de e-mail do

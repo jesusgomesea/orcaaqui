@@ -144,6 +144,8 @@ Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em to
 ## Tema claro/escuro
 A classe `.dark` no `<html>` é escrita por `SCRIPT_TEMA` ([lib/tema.ts](lib/tema.ts)), inline no `<head>` do layout raiz, **antes da primeira pintura** — sem isso a página pisca clara para quem escolheu escuro. Por isso `tema.ts` não importa React: o layout raiz é Server Component.
 
+**A Netlify injeta um comentário no `<head>`** ("This site is hosted on Netlify…") do HTML servido. O React acusa diferença na hidratação (erro #418), refaz a página inteira no cliente e apaga do `<html>` as classes que não vieram do JSX (`dark`, `refract`) — o tema voltava para o claro a cada recarregamento, e só em produção. [ClassesDoHtml](components/layout/ClassesDoHtml.tsx), no layout raiz, as devolve num `useLayoutEffect` (antes da pintura). Qualquer classe nova posta no `<html>` por script inline precisa ser reaplicada ali também. A regra do tema (`temaDe`: só `"light"` salvo dá claro; nada salvo ou armazenamento bloqueado dá escuro) tem teste em `lib/tema.test.ts`, que roda o próprio `SCRIPT_TEMA`.
+
 O React só espelha esse estado, via `useSyncExternalStore` em [lib/useTema.ts](lib/useTema.ts) — no servidor não há como saber o que o script decidiu, e chutar causaria erro de hidratação. A paleta de cada tema é um bloco de variáveis CSS em [app/globals.css](app/globals.css); componente novo usa os tokens (`bg-surface`, `text-text-muted`…), nunca cor fixa.
 
 ## Geração de PDF

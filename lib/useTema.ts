@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { CHAVE_TEMA, type Tema } from "./tema";
+import { CHAVE_TEMA, lerTemaSalvo, type Tema } from "./tema";
 
 // O tema de verdade mora na classe do <html>, escrita pelo SCRIPT_TEMA. Aqui
 // só espelhamos isso para o React — via store externa porque no servidor não
@@ -18,7 +18,9 @@ function subscrever(aoMudar: () => void) {
 
 function lerNoCliente(): Tema {
   if (cache === null) {
-    cache = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    // Lê a escolha salva, não a classe do <html>: a classe pode sumir por um
+    // instante quando a hidratação falha (ver ClassesDoHtml).
+    cache = lerTemaSalvo();
   }
   return cache;
 }
