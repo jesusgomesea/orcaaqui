@@ -9,10 +9,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // "Gel" do Liquid Glass: cor da empresa com gradiente vertical, brilho no topo e sombra colorida.
-        default:
-          "bg-[linear-gradient(180deg,var(--primary-light)_0%,var(--primary)_55%,var(--primary-dark)_100%)] text-sobre-primary shadow-[0_1px_0_rgb(255_255_255/35%)_inset,0_8px_22px_-8px_var(--primary-tint-strong)] hover:brightness-105",
-        secondary: "bg-surface-2 text-text hover:bg-border-strong/60",
+        // Principal = "gel" (app/vidro.css): cor da empresa sólida, nunca vidro.
+        default: "gel hover:brightness-105",
+        // Secundário = vidro leve: translúcido com linha de luz, sem blur (costuma estar dentro de um cartão).
+        secondary: "bg-surface-2 text-text shadow-[0_1px_0_var(--vidro-luz)_inset] hover:bg-vidro-realce",
+        // danger continua na cor de alerta sólida: contraste conferido no claro e no escuro.
         danger: "bg-danger-tint text-danger hover:brightness-95",
         ghost: "bg-transparent text-text-muted hover:bg-surface-2 hover:text-text",
       },

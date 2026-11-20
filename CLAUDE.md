@@ -120,12 +120,20 @@ Todas as telas do app ficam no route group `app/(app)/`, cujo layout aplica o po
 - **`/entrar`, `/recuperar-senha`, `/nova-senha`** — fora do route group, telas de autenticação acessíveis sem sessão (junto com a landing em `/`)
 
 ## Visual (inspirado no orgfinapp)
-Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em tons de zinco, **um** destaque, fonte **Geist** (`@fontsource-variable/geist`), cartões com canto de 24px, campos preenchidos com canto de 16px e botões em pílula. **Escuro é o padrão** (`SCRIPT_TEMA`); o claro continua no botão de tema.
+Linguagem do [orgfinapp](https://github.com/jesusgomesea/orgfinapp): fundo em tons de zinco, **um** destaque, fonte **Geist** (`@fontsource-variable/geist`), cartões com canto de 24px, campos preenchidos com canto de 16px e botões em pílula, com acabamento Liquid Glass (ver abaixo). **Escuro é o padrão** (`SCRIPT_TEMA`); o claro continua no botão de tema.
 
 - **O destaque é a cor da empresa.** [CorDaEmpresa](components/layout/CorDaEmpresa.tsx) escreve `--primary` (de `empresa.corPrimaria`) e `--sobre-primary` (preto ou branco, o de maior contraste — `corSobre` em [lib/cor.ts](lib/cor.ts), testado) no `<html>`. Os tons derivados (`--primary-tint`, `--primary-dark`…) saem por `color-mix` em [globals.css](app/globals.css), então qualquer cor funciona. Fora do app (landing, entrar) vale a cor da marca, `#c6f432`.
 - **Destaque como texto usa `text-primary-texto`**, nunca `text-primary`: no claro é puxado para o escuro e no escuro para o claro, senão uma cor clara some no fundo branco (e um azul-marinho some no preto). Em cima do destaque, `text-sobre-primary`.
 - Tokens: `bg-bg`, `bg-surface` (cartão), `bg-surface-2` (campo, botão secundário), `text-text`, `text-text-muted`, `--radius-cartao`/`--radius-campo`. Componente novo usa os tokens e os primitivos de `components/ui`.
 - **Campos com fonte de 16px no celular** (`sm:` volta a 14px): abaixo disso o iPhone dá zoom sozinho ao tocar no campo. Botões e campos com 44px de altura de toque no celular.
+- **Liquid Glass** ([app/vidro.css](app/vidro.css), importado no topo de globals.css): o vidro é a **moldura**, não o conteúdo — o texto fica sempre nítido. Hierarquia:
+  - `vidro-forte` no cromo e nas sobreposições (barra lateral flutuante, topo e abas do celular, menu "Mais", diálogos, topo da landing). **Refração** (`vidro-refracao`, filtro `#lg-refract`, só Chromium via `html.refract` de `SCRIPT_REFRACAO`) **só em 2–4 elementos de navegação**, nunca em cartão.
+  - `vidro` nos cartões (`Card`). **Listas longas são linhas dentro de um único Card** (`divide-y`) — nunca um vidro por item: `backdrop-filter` custa GPU e vidro sobre vidro embaça.
+  - Campos, botão secundário, abas e blocos internos usam `bg-surface-2`, que é **translúcido e sem blur** (assim como `--border`). Não usar `bg-bg` dentro do app: vira um buraco opaco sobre o vidro. O popover do Select continua sólido (`bg-surface`) de propósito.
+  - Item ativo (nav, aba): `vidro-realce` (um `@utility`, aceita variante: `data-[state=active]:vidro-realce`); hover: `hover:bg-vidro-realce`.
+  - **Botão principal é `gel`** (cor da empresa sólida com brilho), nunca vidro. Cartão de destaque: `vidro vidro-hero`.
+  - O **fundo vivo** ([CenaVidro](components/layout/CenaVidro.tsx), no layout raiz) usa `--primary` e dois tons vizinhos (`oklch(from …)`): muda com a cor da empresa. Por isso nenhuma tela pinta fundo opaco no próprio layout. Some com `prefers-reduced-transparency` (vidro vira `--surface` sólido) e na impressão.
+  - Contraste conferido com cor de empresa escura (azul-marinho) no claro e clara (amarelo) no escuro; ao mexer na opacidade de `--vidro`, refazer essa conta (texto `text-text-muted` ≥ 4.5:1).
 - **Marca**: [components/marca/Marca.tsx](components/marca/Marca.tsx) (símbolo SVG inline, segue a cor de destaque) e [public/favicon.svg](public/favicon.svg) (cor da marca fixa).
 
 ## Layout no celular

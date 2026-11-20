@@ -13,6 +13,14 @@ export interface Novidade {
 
 export const NOVIDADES: Novidade[] = [
   {
+    id: "2026-11-19-01",
+    data: "2026-11-19",
+    tipo: "melhoria",
+    titulo: "Visual novo: vidro na cor da sua empresa",
+    descricao:
+      "O app ganhou um visual de vidro: os cartões, a barra lateral, a barra de abas do celular e as janelas ficaram translúcidos sobre um fundo que se move devagar na cor da sua empresa. O botão principal virou um \"gel\" na mesma cor, e a aba e o item de menu abertos ganharam um realce. O texto continua nítido, no claro e no escuro. Quem pediu ao sistema menos transparência ou menos movimento continua vendo o fundo liso e parado, e o PDF impresso não muda.",
+  },
+  {
     id: "2026-11-13-01",
     data: "2026-11-13",
     tipo: "novidade",

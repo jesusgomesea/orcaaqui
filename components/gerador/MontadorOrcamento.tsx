@@ -303,7 +303,7 @@ export function MontadorOrcamento({ existente, onFechar }: { existente?: Orcamen
           </div>
 
           <aside className="md:sticky md:top-0 md:self-start">
-            <div className="rounded-2xl border border-border bg-bg p-3.5 text-[13px]">
+            <div className="rounded-2xl border border-border bg-surface-2 p-3.5 text-[13px]">
               <div className="mb-2 font-semibold text-text">Resumo · {codigo}</div>
               {calc.linhas.length === 0 ? (
                 <p className="text-text-muted">Nenhum item ainda.</p>

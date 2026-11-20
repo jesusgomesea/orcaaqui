@@ -106,8 +106,9 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen text-text">
-      <header className="sticky top-0 z-10 border-b border-border bg-surface/85 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[1100px] items-center justify-between gap-3 px-5">
+      {/* Topo flutuante em vidro (um dos poucos elementos com refração). */}
+      <header className="sticky top-3 z-10 px-3">
+        <div className="vidro-forte vidro-refracao mx-auto flex h-14 w-full max-w-[1100px] items-center justify-between gap-3 rounded-full pl-5 pr-2.5">
           <Marca />
           <div className="flex items-center gap-2">
             <BotaoTema />
@@ -174,7 +175,7 @@ export default function Landing() {
         </section>
 
         {/* Recursos */}
-        <section className="border-y border-border bg-surface">
+        <section>
           <div className="mx-auto w-full max-w-[1100px] px-5 py-16 md:py-20">
             <h2 className="text-center text-[24px] font-bold tracking-tight md:text-[30px]">
               Tudo que o orçamento precisa
@@ -187,7 +188,7 @@ export default function Landing() {
               {RECURSOS.map(({ icon: Icon, titulo, texto }) => (
                 <div
                   key={titulo}
-                  className="rounded-2xl border border-border bg-bg p-5 transition-shadow hover:shadow-md"
+                  className="vidro rounded-[var(--radius-cartao)] p-5"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-tint text-primary-texto">
                     <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -208,8 +209,8 @@ export default function Landing() {
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {PASSOS.map(({ numero, titulo, texto }) => (
-              <div key={numero} className="rounded-2xl border border-border bg-surface p-6">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[14px] font-bold text-sobre-primary">
+              <div key={numero} className="vidro rounded-[var(--radius-cartao)] p-6">
+                <span className="flex h-8 w-8 items-center justify-center gel rounded-full text-[14px] font-bold">
                   {numero}
                 </span>
                 <h3 className="mt-4 text-[15px] font-bold">{titulo}</h3>
@@ -220,8 +221,9 @@ export default function Landing() {
         </section>
 
         {/* CTA final */}
-        <section className="border-t border-border bg-surface">
-          <div className="mx-auto w-full max-w-[1100px] px-5 py-16 text-center md:py-20">
+        {/* CTA final: cartão de destaque com brilho na cor de acento. */}
+        <section className="mx-auto w-full max-w-[1100px] px-5 pb-16 md:pb-20">
+          <div className="vidro vidro-hero rounded-[26px] px-5 py-14 text-center md:py-16">
             <h2 className="text-[24px] font-bold tracking-tight md:text-[30px]">
               Pronto pra mandar o primeiro orçamento?
             </h2>
@@ -238,7 +240,7 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="border-t border-border">
+      <footer>
         <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center justify-between gap-3 px-5 py-6 text-[12.5px] text-text-muted">
           <span>
             Orça <span className="font-semibold text-text">Aqui</span> — gerador de orçamentos

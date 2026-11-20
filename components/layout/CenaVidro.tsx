@@ -1,7 +1,7 @@
 /**
  * Fundo vivo do Liquid Glass + filtro SVG de refração (#lg-refract). Sem cor
  * atrás, vidro é só cinza: as formas usam a cor da empresa (--primary) e dois
- * tons vizinhos (--cena-2/--cena-3, em globals.css). Server Component estático.
+ * tons vizinhos (--cena-2/--cena-3, em app/vidro.css). Server Component estático.
  */
 export function CenaVidro() {
   return (
